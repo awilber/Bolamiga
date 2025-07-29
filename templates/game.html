@@ -189,9 +189,14 @@ class Enemy {
     }
     
     draw() {
-        // Draw enemy body
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        // Draw enemy using enhanced sprite system
+        if (spriteManager.loaded) {
+            spriteManager.renderSprite(ctx, 'enemy_drone', this.x, this.y, 1, 0);
+        } else {
+            // Fallback to simple rectangle if sprites not loaded
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
         
         // Draw health bar
         const healthBarWidth = this.width;
@@ -308,6 +313,9 @@ function spawnEnemy() {
 function updateGame(deltaTime) {
     if (gameState.paused) return;
     
+    // Update terrain layers
+    terrainLayers.forEach(layer => layer.update(deltaTime));
+    
     // Spawn enemies
     enemySpawnTimer += deltaTime;
     if (enemySpawnTimer > enemySpawnRate) {
@@ -391,9 +399,17 @@ function drawGame() {
     // Draw starfield background
     drawStarfield();
     
-    // Draw player
-    ctx.fillStyle = '#0f0';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    // Draw terrain layers (background to foreground)
+    terrainLayers.forEach(layer => layer.render(ctx));
+    
+    // Draw player using enhanced sprite system
+    if (spriteManager.loaded) {
+        spriteManager.renderSprite(ctx, 'player', player.x, player.y, 1, 0);
+    } else {
+        // Fallback to simple rectangle if sprites not loaded
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
     
     // Draw player health bar
     const healthBarWidth = player.width;
@@ -412,15 +428,219 @@ function drawGame() {
     particles.forEach(function(particle) { particle.draw(); });
 }
 
-// Simple starfield background
+// Enhanced sprite and terrain system
+class SpriteManager {
+    constructor() {
+        this.sprites = new Map();
+        this.loaded = false;
+    }
+    
+    createPixelSprite(name, width, height, pixelData) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        
+        // Create pixel-perfect sprite from data
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const pixel = pixelData[y][x];
+                if (pixel !== 0) {
+                    context.fillStyle = this.getAmigaColor(pixel);
+                    context.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+        
+        this.sprites.set(name, canvas);
+    }
+    
+    getAmigaColor(colorIndex) {
+        const amigaPalette = [
+            '#000000', // 0 - Transparent/Black
+            '#00ff00', // 1 - Player Green
+            '#ffff00', // 2 - Player Yellow
+            '#ff8800', // 3 - Player Orange
+            '#ff4400', // 4 - Enemy Red
+            '#ff0088', // 5 - Enemy Pink
+            '#8800ff', // 6 - Enemy Purple
+            '#0088ff', // 7 - Enemy Blue
+            '#ffffff', // 8 - White (effects)
+            '#00ffff', // 9 - Cyan (bullets)
+            '#444444', // 10 - Dark Gray (terrain)
+            '#666666', // 11 - Medium Gray
+            '#888888', // 12 - Light Gray
+            '#aaaaaa', // 13 - Very Light Gray
+            '#cccccc', // 14 - Near White
+            '#ff0000'  // 15 - Pure Red (explosions)
+        ];
+        return amigaPalette[colorIndex] || '#000000';
+    }
+    
+    renderSprite(ctx, name, x, y, scale = 1, rotation = 0) {
+        const sprite = this.sprites.get(name);
+        if (!sprite) return;
+        
+        ctx.save();
+        ctx.translate(x + sprite.width/2 * scale, y + sprite.height/2 * scale);
+        ctx.rotate(rotation);
+        ctx.scale(scale, scale);
+        ctx.drawImage(sprite, -sprite.width/2, -sprite.height/2);
+        ctx.restore();
+    }
+    
+    initSprites() {
+        // Player ship sprite (32x24) - detailed spaceship
+        const playerSprite = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,2,2,2,2,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,2,2,2,1,1,1,0,0,0,0,0,0],
+            [0,0,0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0,0,0],
+            [0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0],
+            [0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1],
+            [1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1],
+            [1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2],
+            [1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2],
+            [1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1],
+            [0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1],
+            [0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0],
+            [0,0,0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0,0,0],
+            [0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,2,2,2,1,1,1,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,2,2,2,2,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        ];
+        
+        // Enemy drone sprite (24x20) - menacing angular design
+        const enemyDroneSprite = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0],
+            [0,0,0,0,4,4,4,5,5,5,5,5,5,5,5,5,5,4,4,4,0,0,0,0],
+            [0,0,0,4,4,5,5,5,6,6,6,6,6,6,6,6,5,5,5,4,4,0,0,0],
+            [0,0,4,4,5,5,6,6,6,15,15,15,15,15,15,6,6,6,5,5,4,4,0,0],
+            [0,4,4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4,4,0],
+            [4,4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4,4],
+            [4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4],
+            [4,5,5,6,6,15,15,15,15,8,8,8,8,8,8,15,15,15,15,6,6,5,5,4],
+            [4,5,5,6,6,15,15,15,15,8,8,8,8,8,8,15,15,15,15,6,6,5,5,4],
+            [4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4],
+            [4,4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4,4],
+            [0,4,4,5,5,6,6,15,15,15,15,15,15,15,15,15,15,6,6,5,5,4,4,0],
+            [0,0,4,4,5,5,6,6,6,15,15,15,15,15,15,6,6,6,5,5,4,4,0,0],
+            [0,0,0,4,4,5,5,5,6,6,6,6,6,6,6,6,5,5,5,4,4,0,0,0],
+            [0,0,0,0,4,4,4,5,5,5,5,5,5,5,5,5,5,4,4,4,0,0,0,0],
+            [0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        ];
+        
+        this.createPixelSprite('player', 32, 24, playerSprite);
+        this.createPixelSprite('enemy_drone', 24, 20, enemyDroneSprite);
+        this.loaded = true;
+    }
+}
+
+// Enhanced terrain system with parallax layers
+class TerrainLayer {
+    constructor(scrollSpeed, elementCount, elementType, yRange) {
+        this.scrollSpeed = scrollSpeed;
+        this.elements = [];
+        this.elementType = elementType;
+        this.yRange = yRange;
+        
+        // Initialize terrain elements
+        for (let i = 0; i < elementCount; i++) {
+            this.elements.push({
+                x: Math.random() * canvas.width * 2,
+                y: yRange.min + Math.random() * (yRange.max - yRange.min),
+                size: 0.5 + Math.random() * 1.5,
+                color: this.getTerrainColor(),
+                shape: Math.floor(Math.random() * 3) // 0=rect, 1=triangle, 2=circle
+            });
+        }
+    }
+    
+    getTerrainColor() {
+        const terrainColors = ['#444444', '#666666', '#888888', '#aaaaaa'];
+        return terrainColors[Math.floor(Math.random() * terrainColors.length)];
+    }
+    
+    update(deltaTime) {
+        this.elements.forEach(element => {
+            element.x -= this.scrollSpeed * deltaTime / 1000;
+            if (element.x < -50) {
+                element.x = canvas.width + 50;
+                element.y = this.yRange.min + Math.random() * (this.yRange.max - this.yRange.min);
+            }
+        });
+    }
+    
+    render(ctx) {
+        this.elements.forEach(element => {
+            ctx.fillStyle = element.color;
+            ctx.save();
+            
+            const size = element.size * 20;
+            
+            switch (element.shape) {
+                case 0: // Rectangle (building/structure)
+                    ctx.fillRect(element.x, element.y, size, size * 1.5);
+                    break;
+                case 1: // Triangle (mountain/debris)
+                    ctx.beginPath();
+                    ctx.moveTo(element.x, element.y + size);
+                    ctx.lineTo(element.x + size/2, element.y);
+                    ctx.lineTo(element.x + size, element.y + size);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 2: // Circle (asteroid/dome)
+                    ctx.beginPath();
+                    ctx.arc(element.x + size/2, element.y + size/2, size/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+            }
+            
+            ctx.restore();
+        });
+    }
+}
+
+// Enhanced starfield with multiple layers
 let stars = [];
-for (let i = 0; i < 100; i++) {
-    stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        speed: 20 + Math.random() * 30,
-        brightness: Math.random()
-    });
+let spriteManager = new SpriteManager();
+let terrainLayers = [];
+
+// Initialize enhanced background system
+function initEnhancedGraphics() {
+    // Create starfield
+    for (let i = 0; i < 150; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            speed: 10 + Math.random() * 40,
+            brightness: Math.random(),
+            size: Math.random() > 0.8 ? 2 : 1 // Some larger stars
+        });
+    }
+    
+    // Create terrain layers (background to foreground)
+    terrainLayers = [
+        new TerrainLayer(15, 8, 'far_mountains', {min: canvas.height * 0.6, max: canvas.height * 0.8}),
+        new TerrainLayer(30, 12, 'mid_structures', {min: canvas.height * 0.4, max: canvas.height * 0.9}),
+        new TerrainLayer(60, 6, 'near_debris', {min: canvas.height * 0.2, max: canvas.height * 0.95})
+    ];
+    
+    // Initialize sprites
+    spriteManager.initSprites();
 }
 
 function drawStarfield() {
@@ -432,7 +652,7 @@ function drawStarfield() {
         }
         
         ctx.fillStyle = 'rgba(255, 255, 255, ' + star.brightness + ')';
-        ctx.fillRect(star.x, star.y, 1, 1);
+        ctx.fillRect(star.x, star.y, star.size, star.size);
     });
 }
 
@@ -484,10 +704,13 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
+// Initialize enhanced graphics system
+initEnhancedGraphics();
+
 // Initialize game
 updateHUD();
 requestAnimationFrame(gameLoop);
 
-console.log("Bolamiga loaded! Controls: Arrow keys to move, Space to fire, P to pause");
+console.log("Bolamiga loaded! Enhanced sprites and terrain active! Controls: Arrow keys to move, Space to fire, P to pause");
 </script>
 {% endblock %}
