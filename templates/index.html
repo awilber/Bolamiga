@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="boot-screen" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;">
+    <div id="boot-text" style="text-align: center;">
+        <div class="power-on-text">
+            <div id="boot-line-1">BOLAMIGA SYSTEM v1.0</div>
+            <div id="boot-line-2" style="display: none;">INITIALIZING WEAPONS ARRAY...</div>
+            <div id="boot-line-3" style="display: none;">LOADING COMBAT PROTOCOLS...</div>
+            <div id="boot-line-4" style="display: none;">SYSTEM READY</div>
+        </div>
+    </div>
+</div>
+
+<div id="main-menu" style="display: none; text-align: center; padding-top: 20vh;">
+    <h1 style="font-size: 48px; color: #0f0; text-shadow: 0 0 20px #0f0; margin-bottom: 50px;">
+        BOLAMIGA
+    </h1>
+    
+    <div style="font-size: 20px;">
+        <div class="menu-item" onclick="startGame()">START MISSION</div>
+        <div class="menu-item" onclick="showHighScores()">HIGH SCORES</div>
+        <div class="menu-item" onclick="showControls()">CONTROLS</div>
+        <div class="menu-item" onclick="window.close()">EXIT</div>
+    </div>
+    
+    <div id="high-scores" style="display: none; margin-top: 30px;">
+        <h2>HALL OF FAME</h2>
+        <div id="scores-list"></div>
+        <div class="menu-item" onclick="hideHighScores()" style="margin-top: 20px;">BACK</div>
+    </div>
+    
+    <div id="controls-screen" style="display: none; margin-top: 30px;">
+        <h2>COMBAT CONTROLS</h2>
+        <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+            <p>ARROW KEYS - Move</p>
+            <p>SPACEBAR - Fire Primary Weapon</p>
+            <p>SHIFT - Fire Secondary Weapon</p>
+            <p>P - Pause</p>
+            <p>ESC - Return to Menu</p>
+        </div>
+        <div class="menu-item" onclick="hideControls()" style="margin-top: 20px;">BACK</div>
+    </div>
+</div>
+
+<script>
+// Boot sequence
+let bootStep = 0;
+const bootLines = ['boot-line-1', 'boot-line-2', 'boot-line-3', 'boot-line-4'];
+
+function showNextBootLine() {
+    if (bootStep < bootLines.length) {
+        document.getElementById(bootLines[bootStep]).style.display = 'block';
+        bootStep++;
+        
+        if (bootStep < bootLines.length) {
+            setTimeout(showNextBootLine, 1000);
+        } else {
+            setTimeout(showMainMenu, 2000);
+        }
+    }
+}
+
+function showMainMenu() {
+    document.getElementById('boot-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'block';
+}
+
+function startGame() {
+    window.location.href = '/game';
+}
+
+function showHighScores() {
+    fetch('/api/highscores')
+        .then(response => response.json())
+        .then(scores => {
+            const scoresList = document.getElementById('scores-list');
+            scoresList.innerHTML = scores.map((score, index) => 
+                '<div style="margin: 10px 0;">' + (index + 1) + '. ' + score.name + ' - ' + score.score.toLocaleString() + '</div>'
+            ).join('');
+            
+            document.getElementById('high-scores').style.display = 'block';
+        });
+}
+
+function hideHighScores() {
+    document.getElementById('high-scores').style.display = 'none';
+}
+
+function showControls() {
+    document.getElementById('controls-screen').style.display = 'block';
+}
+
+function hideControls() {
+    document.getElementById('controls-screen').style.display = 'none';
+}
+
+// Start boot sequence after page load
+window.onload = function() {
+    setTimeout(showNextBootLine, 500);
+};
+
+// Add retro sound effects (optional)
+function playBeep() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'square';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        // Audio not available, silently continue
+    }
+}
+
+// Add beep sound to menu items
+setTimeout(function() {
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('mouseenter', playBeep);
+    });
+}, 100);
+</script>
+{% endblock %}
