@@ -2,49 +2,150 @@ name: Deploy Bolamiga to AWS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: ${{ env.AWS_REGION }}
         
-    - name: Deploy to EC2
+    - name: Create deployment package
       run: |
-        # Create deployment package
-        zip -r bolamiga-deployment.zip . -x "*.git*" "venv/*" "__pycache__/*"
+        echo "📦 Creating deployment package..."
+        zip -r bolamiga-deployment-${{ github.sha }}.zip . \
+          -x "*.git*" "venv/*" "__pycache__/*" "*.log" "*.pid" "*.pem"
         
-        # Upload to S3 for backup
-        aws s3 cp bolamiga-deployment.zip s3://bolamiga-deployments/$(date +%Y%m%d-%H%M%S)/
+    - name: Upload to S3
+      run: |
+        echo "☁️ Uploading to S3..."
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        aws s3 cp bolamiga-deployment-${{ github.sha }}.zip \
+          s3://bolamiga-deployments/${TIMESTAMP}/bolamiga-${{ github.sha }}.zip
         
-        # Deploy to existing instance or create new one
+    - name: Deploy to AWS
+      run: |
+        echo "🚀 Deploying to AWS..."
         chmod +x deploy.sh
-        ./deploy.sh
+        
+        # Check if instance already exists
+        EXISTING_INSTANCE=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=bolamiga" "Name=instance-state-name,Values=running" \
+          --query 'Reservations[0].Instances[0].InstanceId' \
+          --output text 2>/dev/null || echo "None")
+        
+        if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; then
+          echo "📱 Updating existing instance: $EXISTING_INSTANCE"
+          
+          # Get instance IP
+          INSTANCE_IP=$(aws ec2 describe-instances \
+            --instance-ids $EXISTING_INSTANCE \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          
+          echo "🔄 Deploying to existing instance at $INSTANCE_IP"
+          
+          # Update the application (simplified deployment)
+          ssh -o StrictHostKeyChecking=no -i bolamiga-key.pem ubuntu@$INSTANCE_IP << 'EOSSH'
+            cd /home/ubuntu/Bolamiga
+            git pull origin main
+            sudo systemctl restart bolamiga
+            sudo systemctl restart nginx
+        EOSSH
+          
+          echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+          echo "DEPLOYMENT_TYPE=update" >> $GITHUB_ENV
+        else
+          echo "🆕 Creating new instance"
+          ./deploy.sh
+          
+          # Extract IP from deploy.sh output
+          INSTANCE_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=bolamiga" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          
+          echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+          echo "DEPLOYMENT_TYPE=new" >> $GITHUB_ENV
+        fi
+        
+    - name: Wait for deployment
+      run: |
+        echo "⏳ Waiting for application to be ready..."
+        sleep 60
         
     - name: Verify deployment
       run: |
-        # Wait for deployment to complete
-        sleep 30
+        echo "🧪 Testing deployment at http://$INSTANCE_IP"
         
-        # Test the application
-        INSTANCE_IP=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=bolamiga-game-server" "Name=instance-state-name,Values=running" \
-          --query 'Reservations[0].Instances[0].PublicIpAddress' \
-          --output text)
+        # Test both direct port and nginx proxy
+        for i in {1..10}; do
+          if curl -f -s "http://$INSTANCE_IP" | grep -q "BOLAMIGA"; then
+            echo "✅ Application responding on port 80"
+            break
+          elif curl -f -s "http://$INSTANCE_IP:5030" | grep -q "BOLAMIGA"; then
+            echo "✅ Application responding on port 5030"
+            break
+          else
+            echo "⏳ Attempt $i/10: Application not ready yet, waiting..."
+            sleep 30
+          fi
           
-        echo "Testing deployment at http://$INSTANCE_IP:5000"
-        curl -f "http://$INSTANCE_IP:5000" || exit 1
+          if [ $i -eq 10 ]; then
+            echo "❌ Application failed to respond after 10 attempts"
+            exit 1
+          fi
+        done
         
-        echo "✅ Deployment successful!"
-        echo "🎮 Game URL: http://$INSTANCE_IP:5000"
+        # Test API endpoints
+        curl -f "http://$INSTANCE_IP/api/health" || curl -f "http://$INSTANCE_IP:5030/api/health"
+        
+        echo ""
+        echo "🎉 Deployment successful!"
+        echo "🎮 Bolamiga Game URLs:"
+        echo "   Production: http://$INSTANCE_IP"
+        echo "   Direct:     http://$INSTANCE_IP:5030"
+        echo "   API Health: http://$INSTANCE_IP/api/health"
+        
+    - name: Create GitHub Release
+      if: env.DEPLOYMENT_TYPE == 'new'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Bolamiga Release v${{ github.run_number }}
+        body: |
+          🎮 Bolamiga Retro Space Shooter Deployment
+          
+          **Deployment Details:**
+          - Instance IP: ${{ env.INSTANCE_IP }}
+          - Game URL: http://${{ env.INSTANCE_IP }}
+          - Commit: ${{ github.sha }}
+          - Deployed: ${{ github.event.head_commit.timestamp }}
+          
+          **Features:**
+          - Blood Money-inspired side-scrolling shooter
+          - Retro CRT effects and authentic Amiga aesthetics  
+          - QA-compliant deployment with health monitoring
+          - Persistent status bar with exports and logs
+          
+          **Access:**
+          - Play at: http://${{ env.INSTANCE_IP }}
+          - Health: http://${{ env.INSTANCE_IP }}/api/health
+        draft: false
+        prerelease: false
