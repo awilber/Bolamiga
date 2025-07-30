@@ -1416,30 +1416,30 @@ class AmigaChiptunePlayer {
     }
     
     createTracks() {
-        // Relaxed ambient theme - slower, softer, more atmospheric
+        // Blood Money inspired theme - half speed, closer to original melody
         this.tracks.set('main_theme', {
-            tempo: 90,  // Much slower tempo
+            tempo: 45,  // Half the previous speed (90 -> 45)
             pattern: [
-                // Bass line (channel 1) - Deep driving rhythm
+                // Bass line (channel 1) - Blood Money inspired bass pattern  
                 {channel: 0, notes: [
+                    {freq: 58.27, duration: 1.0, type: 'sawtooth'},   // Bb1 (darker starting note)
+                    {freq: 58.27, duration: 0.5, type: 'sawtooth'},   // Bb1
                     {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
-                    {freq: 65.41, duration: 0.25, type: 'sawtooth'},  // C2
-                    {freq: 87.31, duration: 0.25, type: 'sawtooth'},  // F2
-                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
-                    {freq: 73.42, duration: 0.5, type: 'sawtooth'},   // D2
-                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
-                    {freq: 98.00, duration: 0.5, type: 'sawtooth'},   // G2
-                    {freq: 87.31, duration: 0.5, type: 'sawtooth'}    // F2
+                    {freq: 73.42, duration: 1.0, type: 'sawtooth'},   // D2 
+                    {freq: 87.31, duration: 0.5, type: 'sawtooth'},   // F2 (ascending)
+                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2 (return)
+                    {freq: 58.27, duration: 1.0, type: 'sawtooth'},   // Bb1 (dark resolution)
+                    {freq: 55.00, duration: 1.0, type: 'sawtooth'}    // A1 (even darker)
                 ]},
-                // Lead melody (channel 2) - Haunting electronic lead
+                // Lead melody (channel 2) - Blood Money main theme melody
                 {channel: 1, notes: [
-                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5
-                    {freq: 698.46, duration: 0.5, type: 'square'},    // F5
-                    {freq: 587.33, duration: 0.5, type: 'square'},    // D5
-                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5
-                    {freq: 0, duration: 0.5, type: 'silence'},        // Rest
-                    {freq: 783.99, duration: 0.5, type: 'square'},    // G5
-                    {freq: 698.46, duration: 1.0, type: 'square'}     // F5
+                    {freq: 466.16, duration: 2.0, type: 'square'},    // Bb4 (dark, sustained)
+                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5 (ascending)
+                    {freq: 587.33, duration: 1.0, type: 'square'},    // D5 
+                    {freq: 698.46, duration: 1.5, type: 'square'},    // F5 (peak)
+                    {freq: 587.33, duration: 0.5, type: 'square'},    // D5 (quick descent)
+                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5 
+                    {freq: 466.16, duration: 2.0, type: 'square'}     // Bb4 (dark resolution)
                 ]},
                 // Arp sequence (channel 3) - Fast arpeggiated sequence
                 {channel: 2, notes: [
@@ -1455,9 +1455,9 @@ class AmigaChiptunePlayer {
             ]
         });
         
-        // Combat music - Still urgent but more relaxed
+        // Combat music - Half speed, still urgent but more atmospheric
         this.tracks.set('combat', {
-            tempo: 110,  // Slower combat tempo
+            tempo: 55,  // Half the previous speed (110 -> 55)
             pattern: [
                 // Aggressive bass
                 {channel: 0, notes: [
