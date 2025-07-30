@@ -28,7 +28,7 @@ def kill_existing_processes():
         print("✅ Cleaned up existing processes")
         time.sleep(2)  # Wait for processes to die
     except Exception as e:
-        print(f"⚠️  Warning during process cleanup: {e}")
+        print("⚠️  Warning during process cleanup: " + str(e))
 
 def install_dependencies():
     """Install required dependencies"""
@@ -44,7 +44,7 @@ def install_dependencies():
             print("✅ Flask installed successfully")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to install dependencies: {e}")
+            print("❌ Failed to install dependencies: " + str(e))
             return False
 
 def start_server():
@@ -61,14 +61,14 @@ def start_server():
     # Check port availability
     port = 5030
     if not check_port(port):
-        print(f"⚠️  Port {port} is in use. Attempting to free it...")
+        print("⚠️  Port " + str(port) + " is in use. Attempting to free it...")
         kill_existing_processes()
         time.sleep(3)
         if not check_port(port):
-            print(f"❌ Port {port} is still in use. Please free it manually.")
+            print("❌ Port " + str(port) + " is still in use. Please free it manually.")
             return False
     
-    print(f"✅ Port {port} is available")
+    print("✅ Port " + str(port) + " is available")
     
     # Start the server
     try:
@@ -88,13 +88,13 @@ def start_server():
         
         # Check if server is responding
         if check_port(port):
-            print(f"❌ Server failed to start on port {port}")
+            print("❌ Server failed to start on port " + str(port))
             return False
         
-        print(f"✅ Server started successfully!")
-        print(f"🌐 Local URL: http://localhost:{port}")
-        print(f"📊 Status Bar: Active with exports/backups/logs access")
-        print(f"🆔 Process ID: {process.pid}")
+        print("✅ Server started successfully!")
+        print("🌐 Local URL: http://localhost:" + str(port))
+        print("📊 Status Bar: Active with exports/backups/logs access")
+        print("🆔 Process ID: " + str(process.pid))
         
         # QA Status Report
         print("\n📋 QA COMPLIANCE STATUS:")
@@ -107,7 +107,7 @@ def start_server():
         return True
         
     except Exception as e:
-        print(f"❌ Failed to start server: {e}")
+        print("❌ Failed to start server: " + str(e))
         return False
 
 if __name__ == "__main__":

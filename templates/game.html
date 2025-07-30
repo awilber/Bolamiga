@@ -23,6 +23,10 @@
         <span style="color: var(--color-text-secondary);">HEALTH:</span> 
         <span id="health" style="color: var(--color-retro-success); font-weight: 600;">100</span>
     </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">MUSIC:</span> 
+        <span id="music-status" style="color: var(--color-retro-secondary); font-weight: 600;">READY</span>
+    </div>
 </div>
 
 <!-- Professional Pause Menu -->
@@ -436,6 +440,15 @@ function spawnEnemy() {
         canvas.width + 50,
         Math.random() * (canvas.height - 50) + 25
     ));
+    
+    // Switch to combat music when enemies appear
+    if (chiptunePlayer && chiptunePlayer.currentTrack !== 'combat' && enemies.length > 0) {
+        chiptunePlayer.stopMusic();
+        setTimeout(() => {
+            chiptunePlayer.playTrack('combat');
+            updateMusicStatus('COMBAT');
+        }, 100);
+    }
 }
 
 function updateGame(deltaTime) {
@@ -492,6 +505,15 @@ function updateGame(deltaTime) {
     // Update enemies
     enemies.forEach(function(enemy) { enemy.update(deltaTime); });
     enemies = enemies.filter(function(enemy) { return enemy.x > -50; });
+    
+    // Switch back to main theme when no enemies
+    if (enemies.length === 0 && chiptunePlayer && chiptunePlayer.currentTrack === 'combat') {
+        chiptunePlayer.stopMusic();
+        setTimeout(() => {
+            chiptunePlayer.playTrack('main_theme');
+            updateMusicStatus('MAIN');
+        }, 100);
+    }
     
     // Update particles
     particles.forEach(function(particle) { particle.update(deltaTime); });
@@ -643,23 +665,24 @@ class SpriteManager {
     }
     
     getAmigaColor(colorIndex) {
+        // Authentic Blood Money/Amiga color palette
         const amigaPalette = [
             '#000000', // 0 - Transparent/Black
-            '#00ff00', // 1 - Player Green
-            '#ffff00', // 2 - Player Yellow
-            '#ff8800', // 3 - Player Orange
-            '#ff4400', // 4 - Enemy Red
-            '#ff0088', // 5 - Enemy Pink
-            '#8800ff', // 6 - Enemy Purple
-            '#0088ff', // 7 - Enemy Blue
-            '#ffffff', // 8 - White (effects)
-            '#00ffff', // 9 - Cyan (bullets)
-            '#444444', // 10 - Dark Gray (terrain)
-            '#666666', // 11 - Medium Gray
-            '#888888', // 12 - Light Gray
-            '#aaaaaa', // 13 - Very Light Gray
-            '#cccccc', // 14 - Near White
-            '#ff0000'  // 15 - Pure Red (explosions)
+            '#0000aa', // 1 - Deep Blue (main hull)
+            '#5555ff', // 2 - Medium Blue (hull detail)
+            '#aaaaff', // 3 - Light Blue (highlights)
+            '#ffffff', // 4 - White (cockpit/lights)
+            '#ffff55', // 5 - Yellow (engine glow)
+            '#ff5555', // 6 - Red (weapon systems)
+            '#55ff55', // 7 - Green (navigation)
+            '#ff8800', // 8 - Orange (thrusters)
+            '#888888', // 9 - Gray (armor plating)
+            '#444444', // 10 - Dark Gray (shadows)
+            '#cccccc', // 11 - Light Gray (metal)
+            '#00ffff', // 12 - Cyan (energy systems)
+            '#ff00ff', // 13 - Magenta (special effects)
+            '#aaaaaa', // 14 - Medium Gray
+            '#ff0000'  // 15 - Pure Red (damage/explosions)
         ];
         return amigaPalette[colorIndex] || '#000000';
     }
@@ -677,30 +700,30 @@ class SpriteManager {
     }
     
     initSprites() {
-        // Player ship sprite (32x24) - detailed spaceship
+        // Authentic Blood Money player spacecraft (32x24) - sleek angular fighter
         const playerSprite = [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,2,2,2,2,1,1,1,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,2,2,2,1,1,1,0,0,0,0,0,0],
-            [0,0,0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0,0,0],
-            [0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0],
-            [0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1],
-            [1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1],
-            [1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2],
-            [1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2],
-            [1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1],
-            [0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1],
-            [0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0],
-            [0,0,0,0,0,0,1,1,1,2,2,2,3,3,8,8,8,8,8,8,3,3,2,2,2,1,1,1,0,0,0,0],
-            [0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,2,2,2,1,1,1,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,2,2,2,2,1,1,1,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,1,1,1,4,4,4,4,1,1,1,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,1,1,1,2,2,4,4,4,4,2,2,1,1,1,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,1,1,2,2,3,3,4,4,4,4,3,3,2,2,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,1,1,1,2,2,3,3,3,7,4,4,4,4,7,3,3,3,2,2,1,1,1,0,0,0,0,0],
+            [0,0,1,1,1,1,2,2,3,3,3,7,7,7,4,4,4,4,7,7,7,3,3,3,2,2,1,1,1,1,0,0],
+            [1,1,1,2,2,2,3,3,3,7,7,12,12,12,4,4,4,4,12,12,12,7,7,3,3,3,2,2,2,1,1,1],
+            [1,2,2,3,3,3,7,7,12,12,12,5,5,5,6,6,6,6,5,5,5,12,12,12,7,7,3,3,3,2,2,1],
+            [1,2,2,3,3,3,7,7,12,12,12,5,5,5,6,6,6,6,5,5,5,12,12,12,7,7,3,3,3,2,2,1],
+            [1,1,1,2,2,2,3,3,3,7,7,12,12,12,4,4,4,4,12,12,12,7,7,3,3,3,2,2,2,1,1,1],
+            [0,0,1,1,1,1,2,2,3,3,3,7,7,7,4,4,4,4,7,7,7,3,3,3,2,2,1,1,1,1,0,0],
+            [0,0,0,0,0,1,1,1,2,2,3,3,3,7,4,4,4,4,7,3,3,3,2,2,1,1,1,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,1,1,2,2,3,3,4,4,4,4,3,3,2,2,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,1,1,1,2,2,4,4,4,4,2,2,1,1,1,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,1,1,1,4,4,4,4,1,1,1,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         ];
@@ -1054,6 +1077,28 @@ function updateHUD() {
     }
 }
 
+function updateMusicStatus(status) {
+    const musicElement = document.getElementById('music-status');
+    if (musicElement) {
+        musicElement.textContent = status || 'READY';
+        
+        // Color code music status
+        switch(status) {
+            case 'MAIN':
+                musicElement.style.color = 'var(--color-retro-primary)';
+                break;
+            case 'COMBAT':
+                musicElement.style.color = 'var(--color-retro-error)';
+                break;
+            case 'STOPPED':
+                musicElement.style.color = 'var(--color-text-muted)';
+                break;
+            default:
+                musicElement.style.color = 'var(--color-retro-secondary)';
+        }
+    }
+}
+
 function gameOver() {
     gameState.gameOver = true;
     alert('MISSION FAILED!\nFinal Score: ' + gameState.score.toLocaleString() + '\n\nClick OK to return to menu.');
@@ -1084,6 +1129,228 @@ function playLaserSound() {
     }
 }
 
+function playHitSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.15);
+        oscillator.type = 'square';
+        
+        gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+    } catch (e) {
+        // Audio not available, silently continue
+    }
+}
+
+// Authentic Amiga-era Chiptune Music System
+class AmigaChiptunePlayer {
+    constructor() {
+        this.audioContext = null;
+        this.isPlaying = false;
+        this.currentTrack = null;
+        this.masterGainNode = null;
+        this.tracks = new Map();
+        this.initAudioContext();
+        this.createTracks();
+    }
+    
+    initAudioContext() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGainNode = this.audioContext.createGain();
+            this.masterGainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            this.masterGainNode.connect(this.audioContext.destination);
+        } catch (e) {
+            console.log('Web Audio API not supported');
+        }
+    }
+    
+    createTracks() {
+        // Blood Money inspired main theme - dark electronic with driving bass
+        this.tracks.set('main_theme', {
+            tempo: 140,
+            pattern: [
+                // Bass line (channel 1) - Deep driving rhythm
+                {channel: 0, notes: [
+                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
+                    {freq: 65.41, duration: 0.25, type: 'sawtooth'},  // C2
+                    {freq: 87.31, duration: 0.25, type: 'sawtooth'},  // F2
+                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
+                    {freq: 73.42, duration: 0.5, type: 'sawtooth'},   // D2
+                    {freq: 65.41, duration: 0.5, type: 'sawtooth'},   // C2
+                    {freq: 98.00, duration: 0.5, type: 'sawtooth'},   // G2
+                    {freq: 87.31, duration: 0.5, type: 'sawtooth'}    // F2
+                ]},
+                // Lead melody (channel 2) - Haunting electronic lead
+                {channel: 1, notes: [
+                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5
+                    {freq: 698.46, duration: 0.5, type: 'square'},    // F5
+                    {freq: 587.33, duration: 0.5, type: 'square'},    // D5
+                    {freq: 523.25, duration: 1.0, type: 'square'},    // C5
+                    {freq: 0, duration: 0.5, type: 'silence'},        // Rest
+                    {freq: 783.99, duration: 0.5, type: 'square'},    // G5
+                    {freq: 698.46, duration: 1.0, type: 'square'}     // F5
+                ]},
+                // Arp sequence (channel 3) - Fast arpeggiated sequence
+                {channel: 2, notes: [
+                    {freq: 261.63, duration: 0.125, type: 'triangle'}, // C4
+                    {freq: 329.63, duration: 0.125, type: 'triangle'}, // E4
+                    {freq: 392.00, duration: 0.125, type: 'triangle'}, // G4
+                    {freq: 523.25, duration: 0.125, type: 'triangle'}, // C5
+                    {freq: 392.00, duration: 0.125, type: 'triangle'}, // G4
+                    {freq: 329.63, duration: 0.125, type: 'triangle'}, // E4
+                    {freq: 261.63, duration: 0.125, type: 'triangle'}, // C4
+                    {freq: 196.00, duration: 0.125, type: 'triangle'}  // G3
+                ]}
+            ]
+        });
+        
+        // Combat music - Intense and urgent
+        this.tracks.set('combat', {
+            tempo: 160,
+            pattern: [
+                // Aggressive bass
+                {channel: 0, notes: [
+                    {freq: 73.42, duration: 0.25, type: 'sawtooth'},  // D2
+                    {freq: 73.42, duration: 0.25, type: 'sawtooth'},  // D2
+                    {freq: 98.00, duration: 0.25, type: 'sawtooth'},  // G2
+                    {freq: 73.42, duration: 0.25, type: 'sawtooth'},  // D2
+                    {freq: 110.00, duration: 0.5, type: 'sawtooth'},  // A2
+                    {freq: 98.00, duration: 0.5, type: 'sawtooth'}    // G2
+                ]},
+                // Rapid staccato lead
+                {channel: 1, notes: [
+                    {freq: 587.33, duration: 0.125, type: 'square'},  // D5
+                    {freq: 659.25, duration: 0.125, type: 'square'},  // E5
+                    {freq: 783.99, duration: 0.25, type: 'square'},   // G5
+                    {freq: 587.33, duration: 0.125, type: 'square'},  // D5
+                    {freq: 880.00, duration: 0.375, type: 'square'}   // A5
+                ]}
+            ]
+        });
+    }
+    
+    playTrack(trackName) {
+        if (!this.audioContext || this.isPlaying) return;
+        
+        const track = this.tracks.get(trackName);
+        if (!track) return;
+        
+        this.isPlaying = true;
+        this.currentTrack = trackName;
+        
+        // Resume audio context if suspended
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+        
+        this.playPattern(track);
+    }
+    
+    playPattern(track) {
+        if (!this.isPlaying) return;
+        
+        const baseNoteDuration = 60 / track.tempo; // Duration of quarter note in seconds
+        let maxDuration = 0;
+        
+        // Calculate total pattern duration
+        track.pattern.forEach(channel => {
+            let channelDuration = 0;
+            channel.notes.forEach(note => {
+                channelDuration += note.duration * baseNoteDuration;
+            });
+            maxDuration = Math.max(maxDuration, channelDuration);
+        });
+        
+        // Play each channel
+        track.pattern.forEach((channel, channelIndex) => {
+            this.playChannel(channel, baseNoteDuration, channelIndex);
+        });
+        
+        // Loop the pattern
+        setTimeout(() => {
+            if (this.isPlaying && this.currentTrack) {
+                this.playPattern(track);
+            }
+        }, maxDuration * 1000);
+    }
+    
+    playChannel(channel, baseNoteDuration, channelIndex) {
+        let startTime = this.audioContext.currentTime;
+        
+        channel.notes.forEach(note => {
+            if (note.type !== 'silence' && note.freq > 0) {
+                this.playNote(note.freq, note.duration * baseNoteDuration, startTime, note.type, channelIndex);
+            }
+            startTime += note.duration * baseNoteDuration;
+        });
+    }
+    
+    playNote(frequency, duration, startTime, waveType, channelIndex) {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filterNode = this.audioContext.createBiquadFilter();
+        
+        // Configure oscillator
+        oscillator.type = waveType;
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        
+        // Add slight detuning for authentic Amiga sound
+        const detune = channelIndex * 2 - 1; // -1, 0, 1 for different channels
+        oscillator.detune.setValueAtTime(detune, startTime);
+        
+        // Configure filter for Amiga-style low-pass filtering
+        filterNode.type = 'lowpass';
+        filterNode.frequency.setValueAtTime(3500 - channelIndex * 300, startTime);
+        filterNode.Q.setValueAtTime(1, startTime);
+        
+        // Configure envelope (Attack, Decay, Sustain, Release)
+        const attack = 0.01;
+        const decay = 0.1;
+        const sustain = 0.6;
+        const release = 0.2;
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.8, startTime + attack);
+        gainNode.gain.linearRampToValueAtTime(sustain, startTime + attack + decay);
+        gainNode.gain.setValueAtTime(sustain, startTime + duration - release);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+        
+        // Connect audio graph
+        oscillator.connect(filterNode);
+        filterNode.connect(gainNode);
+        gainNode.connect(this.masterGainNode);
+        
+        // Schedule playback
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+    }
+    
+    stopMusic() {
+        this.isPlaying = false;
+        this.currentTrack = null;
+    }
+    
+    setVolume(volume) {
+        if (this.masterGainNode) {
+            this.masterGainNode.gain.setValueAtTime(volume * 0.15, this.audioContext.currentTime);
+        }
+    }
+}
+
+// Global music player instance
+let chiptunePlayer = null;
+
 // Main game loop
 function gameLoop(currentTime) {
     const deltaTime = currentTime - lastTime;
@@ -1099,10 +1366,42 @@ function gameLoop(currentTime) {
 // Initialize enhanced graphics system
 initEnhancedGraphics();
 
+// Initialize Amiga chiptune music system
+chiptunePlayer = new AmigaChiptunePlayer();
+
 // Initialize game
 updateHUD();
 requestAnimationFrame(gameLoop);
 
-console.log("Bolamiga loaded! Enhanced sprites and terrain active! Controls: Arrow keys to move, Space to fire, P to pause");
+// Start main theme after user interaction
+document.addEventListener('click', function startMusic() {
+    if (chiptunePlayer && !chiptunePlayer.isPlaying) {
+        chiptunePlayer.playTrack('main_theme');
+        updateMusicStatus('MAIN');
+    }
+    document.removeEventListener('click', startMusic);
+}, { once: true });
+
+// Keyboard shortcut for music control
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyM') {
+        if (chiptunePlayer) {
+            if (chiptunePlayer.isPlaying) {
+                chiptunePlayer.stopMusic();
+                updateMusicStatus('STOPPED');
+                console.log("🎵 Music stopped");
+            } else {
+                const trackToPlay = enemies.length > 0 ? 'combat' : 'main_theme';
+                const statusText = enemies.length > 0 ? 'COMBAT' : 'MAIN';
+                chiptunePlayer.playTrack(trackToPlay);
+                updateMusicStatus(statusText);
+                console.log("🎵 Music started: " + statusText);
+            }
+        }
+    }
+});
+
+console.log("Bolamiga loaded! Enhanced sprites, terrain, and Amiga chiptune music active!");
+console.log("Controls: Arrow keys to move, Space to fire, P to pause, M to toggle music");
 </script>
 {% endblock %}
