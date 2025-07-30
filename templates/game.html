@@ -41,18 +41,96 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Device Detection and Platform Configuration System
+const PlatformManager = {
+    // Device detection
+    detectPlatform() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isMobile = /iphone|ipad|ipod|android|blackberry|mini|windows\sce|palm/i.test(userAgent);
+        const isTablet = /ipad|android/i.test(userAgent) && !/mobile/i.test(userAgent);
+        const isIPhone = /iphone|ipod/i.test(userAgent);
+        const isAndroid = /android/i.test(userAgent);
+        
+        return {
+            isMobile,
+            isTablet,
+            isIPhone,
+            isAndroid,
+            isDesktop: !isMobile && !isTablet,
+            deviceType: isIPhone ? 'iphone' : isAndroid ? 'android' : 'desktop',
+            platformType: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'
+        };
+    },
+    
+    // Platform-specific game configurations
+    configs: {
+        desktop: {
+            playerStartX: 100,
+            playerStartY: 300,
+            canvasAspectRatio: 800 / 600,
+            gameAreaPadding: 0,
+            touchControlsEnabled: false,
+            responsivePositioning: false
+        },
+        mobile: {
+            playerStartX: 0.125, // 100/800 as relative position
+            playerStartY: 0.58,  // 350/600 - positioned higher for visibility
+            canvasAspectRatio: 3 / 4, // Taller for mobile screens
+            gameAreaPadding: 20,
+            touchControlsEnabled: true,
+            responsivePositioning: true
+        },
+        tablet: {
+            playerStartX: 0.125,
+            playerStartY: 0.55,
+            canvasAspectRatio: 4 / 3,
+            gameAreaPadding: 10,
+            touchControlsEnabled: true,
+            responsivePositioning: true
+        }
+    },
+    
+    // Get current platform configuration
+    getCurrentConfig() {
+        const platform = this.detectPlatform();
+        const config = this.configs[platform.platformType];
+        
+        // Set CSS variables for styling
+        document.documentElement.style.setProperty('--platform-type', `'${platform.platformType}'`);
+        document.documentElement.style.setProperty('--device-type', `'${platform.deviceType}'`);
+        
+        return {
+            ...config,
+            platform,
+            // Convert relative positions to absolute if needed
+            getPlayerStartX: (canvasWidth) => config.responsivePositioning ? 
+                config.playerStartX * canvasWidth : config.playerStartX,
+            getPlayerStartY: (canvasHeight) => config.responsivePositioning ? 
+                config.playerStartY * canvasHeight : config.playerStartY
+        };
+    }
+};
+
+// Initialize platform configuration
+const currentPlatformConfig = PlatformManager.getCurrentConfig();
+console.log('Platform detected:', currentPlatformConfig.platform);
+console.log('Using config:', currentPlatformConfig);
+
 // Mobile responsive canvas setup
 function setupResponsiveCanvas() {
     const container = document.getElementById('gameContainer');
     const containerRect = container.getBoundingClientRect();
     
-    // Calculate optimal canvas size while maintaining aspect ratio
-    const aspectRatio = 800 / 600;
-    let canvasWidth = Math.min(containerRect.width - 8, 800);
+    // Use platform-specific aspect ratio
+    const aspectRatio = currentPlatformConfig.canvasAspectRatio;
+    const maxWidth = currentPlatformConfig.platform.isMobile ? 800 : 800;
+    const maxHeight = currentPlatformConfig.platform.isMobile ? 600 : 600;
+    
+    let canvasWidth = Math.min(containerRect.width - (currentPlatformConfig.gameAreaPadding * 2), maxWidth);
     let canvasHeight = canvasWidth / aspectRatio;
     
-    if (canvasHeight > containerRect.height - 8) {
-        canvasHeight = containerRect.height - 8;
+    if (canvasHeight > containerRect.height - (currentPlatformConfig.gameAreaPadding * 2)) {
+        canvasHeight = containerRect.height - (currentPlatformConfig.gameAreaPadding * 2);
         canvasWidth = canvasHeight * aspectRatio;
     }
     
@@ -69,6 +147,19 @@ function setupResponsiveCanvas() {
         x: canvas.width / canvasWidth,
         y: canvas.height / canvasHeight
     };
+    
+    // Update player position for responsive designs
+    if (currentPlatformConfig.responsivePositioning) {
+        player.x = currentPlatformConfig.getPlayerStartX(canvas.width);
+        player.y = currentPlatformConfig.getPlayerStartY(canvas.height);
+        player.startX = player.x;
+        player.startY = player.y;
+    }
+    
+    // Add platform-specific visual indicators
+    if (currentPlatformConfig.platform.isMobile) {
+        console.log(`Mobile layout: Player positioned at (${Math.round(player.x)}, ${Math.round(player.y)}) for canvas ${canvas.width}x${canvas.height}`);
+    }
 }
 
 // Initial setup and resize handler
@@ -88,15 +179,18 @@ let gameState = {
     level: 1
 };
 
-// Player object
+// Player object with responsive positioning
 let player = {
-    x: 100,
-    y: 300,
+    x: currentPlatformConfig.getPlayerStartX(800),
+    y: currentPlatformConfig.getPlayerStartY(600),
     width: 32,
     height: 24,
     speed: 200,
     health: 100,
-    maxHealth: 100
+    maxHealth: 100,
+    // Store original positions for reset
+    startX: currentPlatformConfig.getPlayerStartX(800),
+    startY: currentPlatformConfig.getPlayerStartY(600)
 };
 
 // Game arrays
@@ -205,8 +299,8 @@ function restartGame() {
     gameState.lives = 3;
     gameState.paused = false;
     gameState.gameOver = false;
-    player.x = 100;
-    player.y = 300;
+    player.x = player.startX;
+    player.y = player.startY;
     player.health = player.maxHealth;
     bullets.length = 0;
     enemies.length = 0;
@@ -515,8 +609,8 @@ function handleInput(deltaTime) {
                     gameState.gameOver = true;
                 } else {
                     // Respawn player
-                    player.x = 50;
-                    player.y = canvas.height / 2;
+                    player.x = player.startX;
+                    player.y = player.startY;
                     player.health = player.maxHealth;
                 }
             }
@@ -666,8 +760,8 @@ function updateGame(deltaTime) {
                 } else {
                     player.health = player.maxHealth;
                     // Respawn player
-                    player.x = 100;
-                    player.y = 300;
+                    player.x = player.startX;
+                    player.y = player.startY;
                 }
                 updateHUD();
             }
