@@ -74,7 +74,7 @@ const PlatformManager = {
         },
         mobile: {
             playerStartX: 0.125, // 100/800 as relative position
-            playerStartY: 0.58,  // 350/600 - positioned higher for visibility
+            playerStartY: 0.35,  // 35% from top - much higher for iPhone visibility
             canvasAspectRatio: 3 / 4, // Taller for mobile screens
             gameAreaPadding: 20,
             touchControlsEnabled: true,
@@ -156,9 +156,19 @@ function setupResponsiveCanvas() {
         player.startY = player.y;
     }
     
-    // Add platform-specific visual indicators
+    // Add platform-specific visual indicators and emergency positioning
     if (currentPlatformConfig.platform.isMobile) {
         console.log(`Mobile layout: Player positioned at (${Math.round(player.x)}, ${Math.round(player.y)}) for canvas ${canvas.width}x${canvas.height}`);
+        
+        // Emergency iPhone positioning - force ship to visible area
+        if (currentPlatformConfig.platform.isIPhone) {
+            // Position ship at 1/3 from top and 1/8 from left
+            player.x = canvas.width * 0.125;
+            player.y = canvas.height * 0.33;
+            player.startX = player.x;
+            player.startY = player.y;
+            console.log(`🚨 iPhone Emergency Positioning: Ship forced to (${Math.round(player.x)}, ${Math.round(player.y)})`);
+        }
     }
 }
 
