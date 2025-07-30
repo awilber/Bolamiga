@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; height: calc(100vh - 48px); padding-top: 20px;">
+<div id="gameContainer" class="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 </div>
 
@@ -40,6 +40,43 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+// Mobile responsive canvas setup
+function setupResponsiveCanvas() {
+    const container = document.getElementById('gameContainer');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate optimal canvas size while maintaining aspect ratio
+    const aspectRatio = 800 / 600;
+    let canvasWidth = Math.min(containerRect.width - 8, 800);
+    let canvasHeight = canvasWidth / aspectRatio;
+    
+    if (canvasHeight > containerRect.height - 8) {
+        canvasHeight = containerRect.height - 8;
+        canvasWidth = canvasHeight * aspectRatio;
+    }
+    
+    // Set display size
+    canvas.style.width = canvasWidth + 'px';
+    canvas.style.height = canvasHeight + 'px';
+    
+    // Maintain internal resolution
+    canvas.width = 800;
+    canvas.height = 600;
+    
+    // Update scale factor for mouse/touch position calculations
+    window.canvasScale = {
+        x: canvas.width / canvasWidth,
+        y: canvas.height / canvasHeight
+    };
+}
+
+// Initial setup and resize handler
+setupResponsiveCanvas();
+window.addEventListener('resize', setupResponsiveCanvas);
+window.addEventListener('orientationchange', () => {
+    setTimeout(setupResponsiveCanvas, 100);
+});
 
 // Game state
 let gameState = {
@@ -98,6 +135,59 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => {
     keys[e.code] = false;
 });
+
+// Touch controls for mobile devices
+let touchControls = {
+    moveX: 0,
+    moveY: 0,
+    firing: false,
+    lastTouch: 0
+};
+
+// Touch event handlers
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = (touch.clientX - rect.left) * window.canvasScale.x;
+    const touchY = (touch.clientY - rect.top) * window.canvasScale.y;
+    
+    // Start firing
+    touchControls.firing = true;
+    touchControls.lastTouch = Date.now();
+    
+    // Calculate movement direction based on touch position relative to player
+    touchControls.moveX = touchX > player.x + player.width/2 ? 1 : touchX < player.x + player.width/2 ? -1 : 0;
+    touchControls.moveY = touchY > player.y + player.height/2 ? 1 : touchY < player.y + player.height/2 ? -1 : 0;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = (touch.clientX - rect.left) * window.canvasScale.x;
+    const touchY = (touch.clientY - rect.top) * window.canvasScale.y;
+    
+    // Update movement direction
+    touchControls.moveX = touchX > player.x + player.width/2 ? 1 : touchX < player.x + player.width/2 ? -1 : 0;
+    touchControls.moveY = touchY > player.y + player.height/2 ? 1 : touchY < player.y + player.height/2 ? -1 : 0;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    touchControls.firing = false;
+    touchControls.moveX = 0;
+    touchControls.moveY = 0;
+}, { passive: false });
+
+// Prevent default touch behaviors
+document.addEventListener('touchstart', (e) => {
+    if (e.target === canvas) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+    if (e.target === canvas) e.preventDefault();
+}, { passive: false });
 
 function togglePause() {
     gameState.paused = !gameState.paused;
@@ -354,26 +444,32 @@ function handleInput(deltaTime) {
     const originalX = player.x;
     const originalY = player.y;
     
+    // Combine keyboard and touch input
+    const moveLeft = keys['ArrowLeft'] || keys['KeyA'] || touchControls.moveX < 0;
+    const moveRight = keys['ArrowRight'] || keys['KeyD'] || touchControls.moveX > 0;
+    const moveUp = keys['ArrowUp'] || keys['KeyW'] || touchControls.moveY < 0;
+    const moveDown = keys['ArrowDown'] || keys['KeyS'] || touchControls.moveY > 0;
+    
     // Player movement with terrain collision
-    if (keys['ArrowLeft'] || keys['KeyA']) {
+    if (moveLeft) {
         const newX = Math.max(0, player.x - player.speed * deltaTime / 1000);
         if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(newX, player.y, player.width, player.height)) {
             player.x = newX;
         }
     }
-    if (keys['ArrowRight'] || keys['KeyD']) {
+    if (moveRight) {
         const newX = Math.min(canvas.width - player.width, player.x + player.speed * deltaTime / 1000);
         if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(newX, player.y, player.width, player.height)) {
             player.x = newX;
         }
     }
-    if (keys['ArrowUp'] || keys['KeyW']) {
+    if (moveUp) {
         const newY = Math.max(0, player.y - player.speed * deltaTime / 1000);
         if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(player.x, newY, player.width, player.height)) {
             player.y = newY;
         }
     }
-    if (keys['ArrowDown'] || keys['KeyS']) {
+    if (moveDown) {
         const newY = Math.min(canvas.height - player.height, player.y + player.speed * deltaTime / 1000);
         if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(player.x, newY, player.width, player.height)) {
             player.y = newY;
@@ -427,8 +523,8 @@ function handleInput(deltaTime) {
         }
     }
     
-    // Player firing
-    if (keys['Space'] && Date.now() - lastFireTime > fireRate) {
+    // Player firing (keyboard or touch)
+    if ((keys['Space'] || touchControls.firing) && Date.now() - lastFireTime > fireRate) {
         bullets.push(new Bullet(player.x + player.width, player.y + player.height / 2, 400, 0, true));
         lastFireTime = Date.now();
         playLaserSound();
