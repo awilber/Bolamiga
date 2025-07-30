@@ -345,14 +345,20 @@ class Bullet {
     }
     
     draw() {
-        ctx.fillStyle = this.color;
+        // Mobile-optimized bullet rendering
+        const bulletColor = currentPlatformConfig.platform.isIPhone ? 
+            (this.fromPlayer ? '#FFFF00' : '#FF6600') : this.color; // Yellow for player, orange for enemies on iPhone
+            
+        ctx.fillStyle = bulletColor;
         ctx.fillRect(this.x, this.y, this.width, this.height);
         
-        // Add glow effect
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 5;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        ctx.shadowBlur = 0;
+        // Add glow effect (skip on iPhone for performance)
+        if (!currentPlatformConfig.platform.isIPhone) {
+            ctx.shadowColor = bulletColor;
+            ctx.shadowBlur = 5;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+        }
     }
     
     isOffScreen() {
@@ -407,13 +413,21 @@ class Enemy {
     }
     
     draw() {
-        // Draw enemy using enhanced sprite system
-        if (spriteManager.loaded) {
+        // Draw enemy with mobile-optimized rendering
+        if (spriteManager.loaded && !currentPlatformConfig.platform.isIPhone) {
             spriteManager.renderSprite(ctx, 'enemy_drone', this.x, this.y, 1, 0);
         } else {
-            // Fallback to simple rectangle if sprites not loaded
-            ctx.fillStyle = this.color;
+            // Mobile-optimized enemy rendering - always visible on iPhone
+            ctx.fillStyle = currentPlatformConfig.platform.isIPhone ? '#FF4500' : this.color; // Orange-red for iPhone
             ctx.fillRect(this.x, this.y, this.width, this.height);
+            
+            // Add iPhone-specific visual enhancements for enemies
+            if (currentPlatformConfig.platform.isIPhone) {
+                // Red border to distinguish from player
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+            }
         }
         
         // Draw health bar
@@ -780,6 +794,11 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
+    // iPhone Debug: Log game state periodically
+    if (currentPlatformConfig.platform.isIPhone && Math.random() < 0.01) {
+        console.log(`🎮 Game Debug - Player: (${Math.round(player.x)}, ${Math.round(player.y)}), Canvas: ${canvas.width}x${canvas.height}, Enemies: ${enemies.length}, Bullets: ${bullets.length}`);
+    }
+    
     // Screen shake effect
     if (screenShakeIntensity > 0) {
         screenShakeX = (Math.random() - 0.5) * screenShakeIntensity;
@@ -792,9 +811,9 @@ function drawGame() {
     ctx.save();
     ctx.translate(screenShakeX, screenShakeY);
     
-    // Clear canvas
+    // Clear canvas - Fix coordinate issue for mobile
     ctx.fillStyle = '#000';
-    ctx.fillRect(-screenShakeX, -screenShakeY, canvas.width + Math.abs(screenShakeX), canvas.height + Math.abs(screenShakeY));
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw starfield background
     drawStarfield();
@@ -807,13 +826,25 @@ function drawGame() {
         terrainLayers[0].renderCollisionTerrain(ctx, terrainCollisionMap);
     }
     
-    // Draw player using enhanced sprite system
-    if (spriteManager.loaded) {
+    // Draw player using enhanced sprite system with mobile fixes
+    if (spriteManager.loaded && !currentPlatformConfig.platform.isIPhone) {
         spriteManager.renderSprite(ctx, 'player', player.x, player.y, 1, 0);
     } else {
-        // Fallback to simple rectangle if sprites not loaded
-        ctx.fillStyle = '#0f0';
+        // Mobile-optimized fallback - always use simple shapes on iPhone
+        ctx.fillStyle = currentPlatformConfig.platform.isIPhone ? '#00FF41' : '#0f0'; // Matrix green for iPhone
         ctx.fillRect(player.x, player.y, player.width, player.height);
+        
+        // Add iPhone-specific visual enhancements
+        if (currentPlatformConfig.platform.isIPhone) {
+            // Bright yellow border for maximum visibility
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(player.x - 1, player.y - 1, player.width + 2, player.height + 2);
+            
+            // Add a small white dot in center as pilot indicator
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(player.x + player.width/2 - 1, player.y + player.height/2 - 1, 2, 2);
+        }
     }
     
     // Draw player health bar
@@ -827,11 +858,20 @@ function drawGame() {
     ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
     ctx.fillRect(player.x, player.y - 8, healthBarWidth * healthPercent, healthBarHeight);
     
-    // Draw game objects
+    // Draw game objects with mobile debug info
     bullets.forEach(function(bullet) { bullet.draw(); });
     enemies.forEach(function(enemy) { enemy.draw(); });
     particles.forEach(function(particle) { particle.draw(); });
     explosions.forEach(function(explosion) { explosion.draw(); });
+    
+    // iPhone Debug: Show game state on screen
+    if (currentPlatformConfig.platform.isIPhone) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '14px Arial';
+        ctx.fillText(`P:(${Math.round(player.x)},${Math.round(player.y)}) E:${enemies.length} B:${bullets.length}`, 10, 20);
+        ctx.fillText(`Canvas:${canvas.width}x${canvas.height}`, 10, 40);
+        ctx.fillText(`Game Running: ${gameState.gameOver ? 'NO' : 'YES'}`, 10, 60);
+    }
     
     // Restore screen shake transformation
     ctx.restore();
@@ -1368,7 +1408,7 @@ class AmigaChiptunePlayer {
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.masterGainNode = this.audioContext.createGain();
-            this.masterGainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            this.masterGainNode.gain.setValueAtTime(0.08, this.audioContext.currentTime); // Softer overall volume
             this.masterGainNode.connect(this.audioContext.destination);
         } catch (e) {
             console.log('Web Audio API not supported');
@@ -1376,9 +1416,9 @@ class AmigaChiptunePlayer {
     }
     
     createTracks() {
-        // Blood Money inspired main theme - dark electronic with driving bass
+        // Relaxed ambient theme - slower, softer, more atmospheric
         this.tracks.set('main_theme', {
-            tempo: 140,
+            tempo: 90,  // Much slower tempo
             pattern: [
                 // Bass line (channel 1) - Deep driving rhythm
                 {channel: 0, notes: [
@@ -1415,9 +1455,9 @@ class AmigaChiptunePlayer {
             ]
         });
         
-        // Combat music - Intense and urgent
+        // Combat music - Still urgent but more relaxed
         this.tracks.set('combat', {
-            tempo: 160,
+            tempo: 110,  // Slower combat tempo
             pattern: [
                 // Aggressive bass
                 {channel: 0, notes: [
@@ -1514,14 +1554,14 @@ class AmigaChiptunePlayer {
         filterNode.frequency.setValueAtTime(3500 - channelIndex * 300, startTime);
         filterNode.Q.setValueAtTime(1, startTime);
         
-        // Configure envelope (Attack, Decay, Sustain, Release)
-        const attack = 0.01;
-        const decay = 0.1;
-        const sustain = 0.6;
+        // Configure envelope (Attack, Decay, Sustain, Release) - Much softer attack
+        const attack = 0.05;  // Slower attack for softer start
+        const decay = 0.2;    // Longer decay
+        const sustain = 0.4;  // Lower sustain level
         const release = 0.2;
         
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.8, startTime + attack);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + attack);  // Much gentler peak
         gainNode.gain.linearRampToValueAtTime(sustain, startTime + attack + decay);
         gainNode.gain.setValueAtTime(sustain, startTime + duration - release);
         gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
@@ -1543,7 +1583,7 @@ class AmigaChiptunePlayer {
     
     setVolume(volume) {
         if (this.masterGainNode) {
-            this.masterGainNode.gain.setValueAtTime(volume * 0.15, this.audioContext.currentTime);
+            this.masterGainNode.gain.setValueAtTime(volume * 0.06, this.audioContext.currentTime); // Even softer maximum
         }
     }
 }
