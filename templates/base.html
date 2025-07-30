@@ -7,6 +7,23 @@
     <style>
         /* Professional Dark Theme Variables (ProductLifecycle Pattern) */
         :root {
+            /* iPhone Safe Area Variables */
+            --safe-area-inset-top: env(safe-area-inset-top, 0px);
+            --safe-area-inset-right: env(safe-area-inset-right, 0px);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-inset-left: env(safe-area-inset-left, 0px);
+            
+            /* Platform-Specific Layout Variables */
+            --mobile-viewport-height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+            --mobile-game-container-padding: max(var(--safe-area-inset-bottom), 20px);
+            
+            /* Responsive Game Area Variables */
+            --game-container-height-desktop: calc(100vh - 48px);
+            --game-container-height-mobile: var(--mobile-viewport-height);
+            
+            /* Platform Detection Variables (will be set by JavaScript) */
+            --platform-type: 'desktop'; /* desktop, mobile, tablet */
+            --device-type: 'unknown';   /* iphone, android, desktop */
             /* Background System */
             --color-background-primary: #121212;
             --color-background-secondary: #1e1e1e;
@@ -132,9 +149,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: calc(100vh - 48px);
+            height: var(--game-container-height-desktop);
             padding: var(--spacing-sm);
+            padding-top: calc(var(--spacing-sm) + var(--safe-area-inset-top));
+            padding-bottom: calc(var(--spacing-sm) + var(--safe-area-inset-bottom));
             overflow: hidden;
+            position: relative;
         }
         
         .power-on-text {
