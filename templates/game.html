@@ -60,6 +60,11 @@ let lastTime = 0;
 let enemySpawnTimer = 0;
 const enemySpawnRate = 2000; // milliseconds
 
+// Screen shake effect for terrain impacts
+let screenShakeIntensity = 0;
+let screenShakeX = 0;
+let screenShakeY = 0;
+
 document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     
@@ -278,21 +283,129 @@ function createExplosion(x, y) {
     }
 }
 
+// Explosion class for terrain destruction
+class Explosion {
+    constructor(x, y, radius) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.maxRadius = radius;
+        this.life = 300; // milliseconds
+        this.maxLife = 300;
+    }
+    
+    update(deltaTime) {
+        this.life -= deltaTime;
+        this.radius = this.maxRadius * (this.life / this.maxLife);
+    }
+    
+    draw() {
+        if (this.life <= 0) return;
+        
+        const alpha = this.life / this.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        
+        // Draw explosion ring
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Draw inner glow
+        ctx.fillStyle = '#ff6600';
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+    
+    isDead() {
+        return this.life <= 0;
+    }
+}
+
 function handleInput(deltaTime) {
     if (gameState.paused) return;
     
-    // Player movement
+    // Store original position for collision checking
+    const originalX = player.x;
+    const originalY = player.y;
+    
+    // Player movement with terrain collision
     if (keys['ArrowLeft'] || keys['KeyA']) {
-        player.x = Math.max(0, player.x - player.speed * deltaTime / 1000);
+        const newX = Math.max(0, player.x - player.speed * deltaTime / 1000);
+        if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(newX, player.y, player.width, player.height)) {
+            player.x = newX;
+        }
     }
     if (keys['ArrowRight'] || keys['KeyD']) {
-        player.x = Math.min(canvas.width - player.width, player.x + player.speed * deltaTime / 1000);
+        const newX = Math.min(canvas.width - player.width, player.x + player.speed * deltaTime / 1000);
+        if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(newX, player.y, player.width, player.height)) {
+            player.x = newX;
+        }
     }
     if (keys['ArrowUp'] || keys['KeyW']) {
-        player.y = Math.max(0, player.y - player.speed * deltaTime / 1000);
+        const newY = Math.max(0, player.y - player.speed * deltaTime / 1000);
+        if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(player.x, newY, player.width, player.height)) {
+            player.y = newY;
+        }
     }
     if (keys['ArrowDown'] || keys['KeyS']) {
-        player.y = Math.min(canvas.height - player.height, player.y + player.speed * deltaTime / 1000);
+        const newY = Math.min(canvas.height - player.height, player.y + player.speed * deltaTime / 1000);
+        if (!terrainCollisionMap || !terrainCollisionMap.checkRectCollision(player.x, newY, player.width, player.height)) {
+            player.y = newY;
+        }
+    }
+    
+    // Blood Money-style terrain damage system
+    if (terrainCollisionMap) {
+        const terrainCollision = terrainCollisionMap.checkRectCollision(player.x, player.y, player.width, player.height);
+        if (terrainCollision > 0) {
+            // Rapid health drain on terrain contact (Blood Money style)
+            player.health -= 80 * deltaTime / 1000; // Lose 80 health per second
+            
+            // Create terrain contact sparks
+            for (let i = 0; i < 3; i++) {
+                particles.push(new Particle(
+                    player.x + Math.random() * player.width,
+                    player.y + Math.random() * player.height,
+                    {
+                        color: '#ffff00',
+                        size: 2 + Math.random() * 2,
+                        velocity: {
+                            x: (Math.random() - 0.5) * 150,
+                            y: (Math.random() - 0.5) * 150
+                        },
+                        life: 200 + Math.random() * 300
+                    }
+                ));
+            }
+            
+            // Screen shake effect
+            screenShakeIntensity = 5;
+            
+            // Audio feedback (simplified)
+            if (Math.random() > 0.8) {
+                playHitSound();
+            }
+            
+            // Check for player death
+            if (player.health <= 0) {
+                gameState.lives--;
+                if (gameState.lives <= 0) {
+                    gameState.gameOver = true;
+                } else {
+                    // Respawn player
+                    player.x = 50;
+                    player.y = canvas.height / 2;
+                    player.health = player.maxHealth;
+                }
+            }
+        }
     }
     
     // Player firing
@@ -323,9 +436,43 @@ function updateGame(deltaTime) {
         enemySpawnTimer = 0;
     }
     
-    // Update bullets
-    bullets.forEach(function(bullet) { bullet.update(deltaTime); });
-    bullets = bullets.filter(function(bullet) { return !bullet.isOffScreen(); });
+    // Update bullets with terrain collision
+    bullets.forEach(function(bullet) { 
+        bullet.update(deltaTime);
+        
+        // Check bullet-terrain collision
+        if (terrainCollisionMap) {
+            const terrainHit = terrainCollisionMap.checkRectCollision(bullet.x, bullet.y, 4, 2);
+            if (terrainHit > 0) {
+                bullet.active = false;
+                
+                // Create bullet impact effect
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(bullet.x, bullet.y, {
+                        color: '#ffaa00',
+                        size: 1 + Math.random() * 3,
+                        velocity: {
+                            x: (Math.random() - 0.5) * 200,
+                            y: (Math.random() - 0.5) * 200
+                        },
+                        life: 300 + Math.random() * 500
+                    }));
+                }
+                
+                // Destroy destructible terrain
+                if (terrainCollisionMap.isPointDestructible(bullet.x, bullet.y)) {
+                    terrainCollisionMap.destroyCircularArea(bullet.x, bullet.y, 12);
+                    
+                    // Screen shake for terrain destruction
+                    screenShakeIntensity = 8;
+                    
+                    // Create explosion effect
+                    explosions.push(new Explosion(bullet.x, bullet.y, 25));
+                }
+            }
+        }
+    });
+    bullets = bullets.filter(function(bullet) { return !bullet.isOffScreen() && bullet.active !== false; });
     
     // Update enemies
     enemies.forEach(function(enemy) { enemy.update(deltaTime); });
@@ -334,6 +481,10 @@ function updateGame(deltaTime) {
     // Update particles
     particles.forEach(function(particle) { particle.update(deltaTime); });
     particles = particles.filter(function(particle) { return !particle.isDead(); });
+    
+    // Update explosions
+    explosions.forEach(function(explosion) { explosion.update(deltaTime); });
+    explosions = explosions.filter(function(explosion) { return !explosion.isDead(); });
     
     // Collision detection: player bullets vs enemies
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -392,15 +543,32 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
+    // Screen shake effect
+    if (screenShakeIntensity > 0) {
+        screenShakeX = (Math.random() - 0.5) * screenShakeIntensity;
+        screenShakeY = (Math.random() - 0.5) * screenShakeIntensity;
+        screenShakeIntensity *= 0.9; // Decay shake
+        if (screenShakeIntensity < 0.1) screenShakeIntensity = 0;
+    }
+    
+    // Apply screen shake
+    ctx.save();
+    ctx.translate(screenShakeX, screenShakeY);
+    
     // Clear canvas
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(-screenShakeX, -screenShakeY, canvas.width + Math.abs(screenShakeX), canvas.height + Math.abs(screenShakeY));
     
     // Draw starfield background
     drawStarfield();
     
     // Draw terrain layers (background to foreground)
     terrainLayers.forEach(layer => layer.render(ctx));
+    
+    // Draw Blood Money-style terrain collision boundaries
+    if (terrainCollisionMap && terrainLayers.length > 0) {
+        terrainLayers[0].renderCollisionTerrain(ctx, terrainCollisionMap);
+    }
     
     // Draw player using enhanced sprite system
     if (spriteManager.loaded) {
@@ -426,6 +594,10 @@ function drawGame() {
     bullets.forEach(function(bullet) { bullet.draw(); });
     enemies.forEach(function(enemy) { enemy.draw(); });
     particles.forEach(function(particle) { particle.draw(); });
+    explosions.forEach(function(explosion) { explosion.draw(); });
+    
+    // Restore screen shake transformation
+    ctx.restore();
 }
 
 // Enhanced sprite and terrain system
@@ -548,7 +720,106 @@ class SpriteManager {
     }
 }
 
-// Enhanced terrain system with parallax layers
+// Blood Money-style terrain collision system
+class TerrainCollisionMap {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        this.collisionData = new Uint8Array(width * height);
+        this.generateTerrainMap();
+    }
+    
+    generateTerrainMap() {
+        // Create Blood Money-style irregular terrain boundaries
+        for (let x = 0; x < this.width; x++) {
+            // Generate upper terrain boundary (ceiling)
+            const upperHeight = 50 + Math.sin(x * 0.02) * 30 + Math.sin(x * 0.05) * 15;
+            // Generate lower terrain boundary (floor)
+            const lowerHeight = this.height - (80 + Math.cos(x * 0.015) * 40 + Math.cos(x * 0.08) * 20);
+            
+            // Mark collision pixels
+            for (let y = 0; y < upperHeight; y++) {
+                this.setPixel(x, y, 1); // Solid terrain
+            }
+            for (let y = lowerHeight; y < this.height; y++) {
+                this.setPixel(x, y, 1); // Solid terrain
+            }
+            
+            // Add occasional vertical barriers (destructible)
+            if (x % 200 === 0 && Math.random() > 0.3) {
+                const barrierHeight = upperHeight + 40 + Math.random() * 60;
+                const barrierThickness = 8 + Math.random() * 16;
+                for (let bx = 0; bx < barrierThickness; bx++) {
+                    for (let by = upperHeight; by < barrierHeight; by++) {
+                        if (x + bx < this.width && by < this.height) {
+                            this.setPixel(x + bx, by, 2); // Destructible terrain
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    setPixel(x, y, value) {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.collisionData[y * this.width + x] = value;
+        }
+    }
+    
+    getPixel(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 1; // Treat out-of-bounds as solid
+        return this.collisionData[Math.floor(y) * this.width + Math.floor(x)];
+    }
+    
+    isPointSolid(x, y) {
+        return this.getPixel(x, y) > 0;
+    }
+    
+    isPointDestructible(x, y) {
+        return this.getPixel(x, y) === 2;
+    }
+    
+    checkRectCollision(x, y, width, height) {
+        // Check all four corners and center points
+        const points = [
+            {x: x, y: y},
+            {x: x + width, y: y},
+            {x: x, y: y + height},
+            {x: x + width, y: y + height},
+            {x: x + width/2, y: y + height/2}
+        ];
+        
+        for (let point of points) {
+            if (this.isPointSolid(point.x, point.y)) {
+                return this.getPixel(point.x, point.y);
+            }
+        }
+        return 0;
+    }
+    
+    destroyCircularArea(centerX, centerY, radius) {
+        for (let x = centerX - radius; x <= centerX + radius; x++) {
+            for (let y = centerY - radius; y <= centerY + radius; y++) {
+                const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                if (distance <= radius && this.isPointDestructible(x, y)) {
+                    this.setPixel(x, y, 0); // Remove terrain
+                    // Create debris particles
+                    particles.push(new Particle(x, y, {
+                        color: '#8B4513',
+                        size: 2 + Math.random() * 3,
+                        velocity: {
+                            x: (Math.random() - 0.5) * 100,
+                            y: (Math.random() - 0.5) * 100
+                        },
+                        life: 1000 + Math.random() * 2000
+                    }));
+                }
+            }
+        }
+    }
+}
+
+// Enhanced terrain system with Blood Money-style boundaries
 class TerrainLayer {
     constructor(scrollSpeed, elementCount, elementType, yRange) {
         this.scrollSpeed = scrollSpeed;
@@ -612,12 +883,63 @@ class TerrainLayer {
             ctx.restore();
         });
     }
+    
+    // Render Blood Money-style terrain boundaries
+    renderCollisionTerrain(ctx, collisionMap) {
+        ctx.fillStyle = '#4a4a4a';
+        ctx.strokeStyle = '#6a6a6a';
+        ctx.lineWidth = 1;
+        
+        // Sample and render terrain outline
+        ctx.beginPath();
+        let lastY = 0;
+        
+        // Upper boundary
+        for (let x = 0; x < canvas.width; x += 2) {
+            for (let y = 0; y < canvas.height; y++) {
+                if (collisionMap.getPixel(x, y) > 0) {
+                    if (x === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                    lastY = y;
+                    break;
+                }
+            }
+        }
+        
+        // Lower boundary (reverse direction)
+        for (let x = canvas.width - 1; x >= 0; x -= 2) {
+            for (let y = canvas.height - 1; y >= 0; y--) {
+                if (collisionMap.getPixel(x, y) > 0) {
+                    ctx.lineTo(x, y);
+                    break;
+                }
+            }
+        }
+        
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Render destructible barriers with different color
+        ctx.fillStyle = '#8B4513'; // Brown for destructible terrain
+        for (let x = 0; x < canvas.width; x += 4) {
+            for (let y = 0; y < canvas.height; y += 4) {
+                if (collisionMap.isPointDestructible(x, y)) {
+                    ctx.fillRect(x, y, 4, 4);
+                }
+            }
+        }
+    }
 }
 
 // Enhanced starfield with multiple layers
 let stars = [];
 let spriteManager = new SpriteManager();
 let terrainLayers = [];
+let terrainCollisionMap;
 
 // Initialize enhanced background system
 function initEnhancedGraphics() {
@@ -638,6 +960,9 @@ function initEnhancedGraphics() {
         new TerrainLayer(30, 12, 'mid_structures', {min: canvas.height * 0.4, max: canvas.height * 0.9}),
         new TerrainLayer(60, 6, 'near_debris', {min: canvas.height * 0.2, max: canvas.height * 0.95})
     ];
+    
+    // Initialize Blood Money-style terrain collision map
+    terrainCollisionMap = new TerrainCollisionMap(canvas.width, canvas.height);
     
     // Initialize sprites
     spriteManager.initSprites();
