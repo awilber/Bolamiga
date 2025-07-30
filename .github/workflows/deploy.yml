@@ -82,7 +82,15 @@ jobs:
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           
-          echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+          # Associate Elastic IP for consistent address
+          echo "📍 Associating static Elastic IP..."
+          aws ec2 associate-address --instance-id $NEW_INSTANCE --allocation-id eipalloc-05115f5d4eae74f9f || echo "⚠️  Elastic IP association failed"
+          
+          # Use static IP instead of dynamic one
+          STATIC_IP="52.204.251.14"
+          echo "✅ Static IP configured: $STATIC_IP"
+          
+          echo "INSTANCE_IP=$STATIC_IP" >> $GITHUB_ENV
           echo "PREVIOUS_IP=$CURRENT_IP" >> $GITHUB_ENV
           echo "DEPLOYMENT_TYPE=replaced" >> $GITHUB_ENV
         else
