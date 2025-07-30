@@ -1,0 +1,45 @@
+# Git files
+.git
+.gitignore
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Development files
+*.log
+*.pid
+server.log
+server.pid
+bolamiga.pid
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Deployment files
+*.pem
+deploy.sh
+user-data.sh
+
+# Documentation
+README.md
+CLAUDE.md
+
+# Test files
+*_test.py
+qa_test.py
+simple_test.py
+minimal_test.py
