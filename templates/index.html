@@ -64,6 +64,9 @@ function showNextBootLine() {
 function showMainMenu() {
     document.getElementById('boot-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'block';
+    
+    // Initialize menu sounds after menu is visible
+    setTimeout(initMenuSounds, 100);
 }
 
 function startGame() {
@@ -100,34 +103,80 @@ window.onload = function() {
     setTimeout(showNextBootLine, 500);
 };
 
-// Add retro sound effects (optional)
-function playBeep() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 800;
-        oscillator.type = 'square';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (e) {
-        // Audio not available, silently continue
+// Enhanced menu audio system
+let menuAudioContext = null;
+let menuAudioInitialized = false;
+
+function initMenuAudio() {
+    if (!menuAudioInitialized) {
+        try {
+            menuAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            menuAudioInitialized = true;
+        } catch (e) {
+            console.log('Menu audio not available');
+        }
     }
 }
 
-// Add beep sound to menu items
-setTimeout(function() {
+function playMenuBeep(frequency = 800, duration = 0.1) {
+    if (!menuAudioContext) return;
+    
+    try {
+        // Resume context if suspended
+        if (menuAudioContext.state === 'suspended') {
+            menuAudioContext.resume();
+        }
+        
+        const oscillator = menuAudioContext.createOscillator();
+        const gainNode = menuAudioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(menuAudioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(frequency, menuAudioContext.currentTime);
+        oscillator.type = 'square';
+        
+        gainNode.gain.setValueAtTime(0.15, menuAudioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, menuAudioContext.currentTime + duration);
+        
+        oscillator.start(menuAudioContext.currentTime);
+        oscillator.stop(menuAudioContext.currentTime + duration);
+    } catch (e) {
+        // Audio error, silently continue
+    }
+}
+
+function playMenuHover() {
+    playMenuBeep(600, 0.08); // Lower pitch, shorter duration for hover
+}
+
+function playMenuClick() {
+    playMenuBeep(1000, 0.12); // Higher pitch, longer duration for click
+}
+
+// Initialize audio and add event listeners
+function setupMenuAudio() {
+    initMenuAudio();
+    
+    // Add hover and click sounds to all menu items
     document.querySelectorAll('.menu-item').forEach(item => {
-        item.addEventListener('mouseenter', playBeep);
+        item.addEventListener('mouseenter', playMenuHover);
+        item.addEventListener('click', playMenuClick);
     });
-}, 100);
+}
+
+// User interaction to initialize audio (required by browsers)
+document.addEventListener('click', function initAudioOnClick() {
+    initMenuAudio();
+    if (menuAudioContext && menuAudioContext.state === 'suspended') {
+        menuAudioContext.resume();
+    }
+}, { once: true });
+
+// Setup menu audio after DOM loads and menu becomes visible
+function initMenuSounds() {
+    setupMenuAudio();
+    console.log('🔊 Menu sounds initialized');
+}
 </script>
 {% endblock %}
