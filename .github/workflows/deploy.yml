@@ -51,17 +51,40 @@ jobs:
         if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; then
           echo "📱 Found existing instance: $EXISTING_INSTANCE"
           
-          # Get instance IP
-          INSTANCE_IP=$(aws ec2 describe-instances \
+          # Get current instance IP for user notification
+          CURRENT_IP=$(aws ec2 describe-instances \
             --instance-ids $EXISTING_INSTANCE \
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           
-          echo "✅ Using existing deployment at $INSTANCE_IP"
-          echo "ℹ️  Note: Manual update required for latest changes"
+          echo "🔄 Terminating old instance to deploy latest iPhone mobile fixes..."
+          echo "📱 Current IP $CURRENT_IP will be replaced with new deployment"
+          
+          # Terminate existing instance
+          aws ec2 terminate-instances --instance-ids $EXISTING_INSTANCE
+          
+          # Wait for termination
+          echo "⏳ Waiting for instance termination..."
+          aws ec2 wait instance-terminated --instance-ids $EXISTING_INSTANCE
+          
+          echo "🆕 Creating new instance with latest mobile improvements"
+          ./deploy.sh
+          
+          # Get new instance IP
+          sleep 30  # Allow time for new instance to be tagged
+          NEW_INSTANCE=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=bolamiga" "Name=instance-state-name,Values=pending,running" \
+            --query 'Reservations[-1].Instances[0].InstanceId' \
+            --output text)
+            
+          INSTANCE_IP=$(aws ec2 describe-instances \
+            --instance-ids $NEW_INSTANCE \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
           
           echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
-          echo "DEPLOYMENT_TYPE=existing" >> $GITHUB_ENV
+          echo "PREVIOUS_IP=$CURRENT_IP" >> $GITHUB_ENV
+          echo "DEPLOYMENT_TYPE=replaced" >> $GITHUB_ENV
         else
           echo "🆕 Creating new instance"
           ./deploy.sh
@@ -109,10 +132,29 @@ jobs:
         
         echo ""
         echo "🎉 Deployment successful!"
+        
+        if [ "$DEPLOYMENT_TYPE" == "replaced" ]; then
+          echo "📱 NEW iPhone Mobile-Optimized Deployment!"
+          echo "🔄 Instance replaced to deploy latest mobile fixes"
+          echo "⚠️  IP ADDRESS CHANGED:"
+          echo "   Previous: http://$PREVIOUS_IP"
+          echo "   NEW:      http://$INSTANCE_IP"
+          echo ""
+          echo "📱 iPhone Mobile Improvements Deployed:"
+          echo "   ✅ Emergency ship positioning (33% from top)"
+          echo "   ✅ Safe area support for iPhone notches"
+          echo "   ✅ Responsive coordinate system"
+          echo "   ✅ Touch controls optimized"
+        fi
+        
+        echo ""
         echo "🎮 Bolamiga Game URLs:"
         echo "   Production: http://$INSTANCE_IP"
         echo "   Direct:     http://$INSTANCE_IP:5030"
         echo "   API Health: http://$INSTANCE_IP/api/health"
+        echo ""
+        echo "📱 iPhone Testing: Open http://$INSTANCE_IP on iPhone Safari"
+        echo "🔍 Console Check: Look for 'iPhone Emergency Positioning' message"
         
     - name: Create GitHub Release
       if: env.DEPLOYMENT_TYPE == 'new'
