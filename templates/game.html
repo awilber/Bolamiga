@@ -1,21 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+<div style="display: flex; justify-content: center; align-items: center; height: calc(100vh - 48px); padding-top: 20px;">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 </div>
 
-<div id="hud" style="position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 16px; z-index: 100;">
-    <div>SCORE: <span id="score">0</span></div>
-    <div>LIVES: <span id="lives">3</span></div>
-    <div>WEAPON: <span id="weapon">PULSE</span></div>
+<!-- Professional Dark Theme HUD -->
+<div class="game-hud">
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">SCORE:</span> 
+        <span id="score" style="color: var(--color-retro-primary); font-weight: 600;">0</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">LIVES:</span> 
+        <span id="lives" style="color: var(--color-retro-success); font-weight: 600;">3</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">WEAPON:</span> 
+        <span id="weapon" style="color: var(--color-retro-secondary); font-weight: 600;">PULSE</span>
+    </div>
+    <div class="hud-item" id="health-display">
+        <span style="color: var(--color-text-secondary);">HEALTH:</span> 
+        <span id="health" style="color: var(--color-retro-success); font-weight: 600;">100</span>
+    </div>
 </div>
 
-<div id="pause-menu" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); padding: 30px; border: 2px solid #0f0; z-index: 200;">
-    <h2 style="color: #0f0; margin-bottom: 20px;">GAME PAUSED</h2>
-    <div class="menu-item" onclick="resumeGame()">RESUME</div>
-    <div class="menu-item" onclick="restartGame()">RESTART</div>
-    <div class="menu-item" onclick="returnToMenu()">MAIN MENU</div>
+<!-- Professional Pause Menu -->
+<div id="pause-menu" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--color-background-elevated); padding: var(--spacing-xl); border: 1px solid var(--color-border-default); border-radius: var(--border-radius-lg); z-index: 200; box-shadow: var(--effect-shadow-lg); backdrop-filter: blur(12px); min-width: 300px;">
+    <h2 style="color: var(--color-text-primary); margin-bottom: var(--spacing-md); text-align: center; font-family: var(--font-mono); font-weight: 600;">GAME PAUSED</h2>
+    <div class="menu-item" onclick="resumeGame()" style="margin-bottom: var(--spacing-sm);">▶️ RESUME</div>
+    <div class="menu-item" onclick="restartGame()" style="margin-bottom: var(--spacing-sm);">🔄 RESTART</div>
+    <div class="menu-item" onclick="returnToMenu()">🏠 MAIN MENU</div>
 </div>
 
 <script>
@@ -840,7 +855,13 @@ class TerrainLayer {
     }
     
     getTerrainColor() {
-        const terrainColors = ['#444444', '#666666', '#888888', '#aaaaaa'];
+        // Enhanced terrain colors for dark theme visibility
+        const terrainColors = [
+            'rgba(68, 68, 68, 0.9)',   // Dark gray
+            'rgba(94, 158, 255, 0.3)',  // Professional blue tint
+            'rgba(102, 102, 102, 0.8)', // Medium gray
+            'rgba(136, 136, 136, 0.7)'  // Light gray
+        ];
         return terrainColors[Math.floor(Math.random() * terrainColors.length)];
     }
     
@@ -884,10 +905,11 @@ class TerrainLayer {
         });
     }
     
-    // Render Blood Money-style terrain boundaries
+    // Render Blood Money-style terrain boundaries with dark theme optimization
     renderCollisionTerrain(ctx, collisionMap) {
-        ctx.fillStyle = '#4a4a4a';
-        ctx.strokeStyle = '#6a6a6a';
+        // Use CSS variables for consistent theming
+        ctx.fillStyle = 'rgba(74, 74, 74, 0.9)';
+        ctx.strokeStyle = 'rgba(94, 158, 255, 0.4)';
         ctx.lineWidth = 1;
         
         // Sample and render terrain outline
@@ -923,8 +945,11 @@ class TerrainLayer {
         ctx.fill();
         ctx.stroke();
         
-        // Render destructible barriers with different color
-        ctx.fillStyle = '#8B4513'; // Brown for destructible terrain
+        // Render destructible barriers with enhanced visibility
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.8)'; // Amber for destructible terrain
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.3)';
+        ctx.shadowBlur = 2;
+        
         for (let x = 0; x < canvas.width; x += 4) {
             for (let y = 0; y < canvas.height; y += 4) {
                 if (collisionMap.isPointDestructible(x, y)) {
@@ -932,6 +957,10 @@ class TerrainLayer {
                 }
             }
         }
+        
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
     }
 }
 
@@ -976,8 +1005,21 @@ function drawStarfield() {
             star.y = Math.random() * canvas.height;
         }
         
-        ctx.fillStyle = 'rgba(255, 255, 255, ' + star.brightness + ')';
+        // Enhanced starfield with subtle teal tint for dark theme
+        const alpha = star.brightness * 0.8; // Slightly dimmer for dark theme
+        ctx.fillStyle = `rgba(94, 158, 255, ${alpha})`;
+        
+        // Add glow effect for larger stars
+        if (star.size > 1) {
+            ctx.shadowColor = 'rgba(94, 158, 255, 0.5)';
+            ctx.shadowBlur = 2;
+        }
+        
         ctx.fillRect(star.x, star.y, star.size, star.size);
+        
+        // Reset shadow for other elements
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
     });
 }
 
@@ -985,6 +1027,31 @@ function updateHUD() {
     document.getElementById('score').textContent = gameState.score.toLocaleString();
     document.getElementById('lives').textContent = gameState.lives;
     document.getElementById('weapon').textContent = gameState.weapon;
+    
+    // Update health display with color coding
+    const healthElement = document.getElementById('health');
+    if (healthElement) {
+        healthElement.textContent = Math.max(0, Math.round(player.health));
+        
+        // Color code health based on level
+        if (player.health > 70) {
+            healthElement.style.color = 'var(--color-retro-success)';
+        } else if (player.health > 30) {
+            healthElement.style.color = 'var(--color-retro-warning)';
+        } else {
+            healthElement.style.color = 'var(--color-retro-error)';
+        }
+    }
+    
+    // Update lives color based on count
+    const livesElement = document.getElementById('lives');
+    if (gameState.lives <= 1) {
+        livesElement.style.color = 'var(--color-retro-error)';
+    } else if (gameState.lives <= 2) {
+        livesElement.style.color = 'var(--color-retro-warning)';
+    } else {
+        livesElement.style.color = 'var(--color-retro-success)';
+    }
 }
 
 function gameOver() {
