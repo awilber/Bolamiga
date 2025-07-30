@@ -21,11 +21,44 @@ def check_port(port):
     return result != 0
 
 def kill_existing_processes():
-    """Kill any existing Bolamiga processes"""
+    """Kill any existing Bolamiga processes ONLY from current project directory"""
     try:
-        subprocess.run(['pkill', '-f', 'python.*app.py'], check=False)
-        subprocess.run(['pkill', '-f', 'Bolamiga'], check=False)
-        print("✅ Cleaned up existing processes")
+        # Safe approach: Only kill processes using port 5030 from current directory
+        current_dir = os.getcwd()
+        
+        # Find processes using port 5030
+        try:
+            result = subprocess.run(['lsof', '-i', ':5030'], capture_output=True, text=True, check=False)
+            if result.stdout:
+                lines = result.stdout.strip().split('\n')[1:]  # Skip header
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            pid = parts[1]
+                            # Check if process is from current directory
+                            try:
+                                pwd_result = subprocess.run(['pwdx', pid], capture_output=True, text=True, check=False)
+                                if pwd_result.stdout and current_dir in pwd_result.stdout:
+                                    subprocess.run(['kill', '-9', pid], check=False)
+                                    print(f"✅ Killed Bolamiga process {pid} from current directory")
+                            except:
+                                pass
+        except:
+            pass
+        
+        # Also check for our specific PID file
+        if os.path.exists('bolamiga.pid'):
+            try:
+                with open('bolamiga.pid', 'r') as f:
+                    pid = f.read().strip()
+                subprocess.run(['kill', '-9', pid], check=False)
+                os.remove('bolamiga.pid')
+                print(f"✅ Killed Bolamiga process {pid} from PID file")
+            except:
+                pass
+        
+        print("✅ Safely cleaned up existing Bolamiga processes")
         time.sleep(2)  # Wait for processes to die
     except Exception as e:
         print("⚠️  Warning during process cleanup: " + str(e))
