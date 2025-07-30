@@ -49,7 +49,7 @@ jobs:
           --output text 2>/dev/null || echo "None")
         
         if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; then
-          echo "📱 Updating existing instance: $EXISTING_INSTANCE"
+          echo "📱 Found existing instance: $EXISTING_INSTANCE"
           
           # Get instance IP
           INSTANCE_IP=$(aws ec2 describe-instances \
@@ -57,18 +57,11 @@ jobs:
             --query 'Reservations[0].Instances[0].PublicIpAddress' \
             --output text)
           
-          echo "🔄 Deploying to existing instance at $INSTANCE_IP"
-          
-          # Update the application (simplified deployment)
-          ssh -o StrictHostKeyChecking=no -i bolamiga-key.pem ubuntu@$INSTANCE_IP << 'EOSSH'
-            cd /home/ubuntu/Bolamiga
-            git pull origin main
-            sudo systemctl restart bolamiga
-            sudo systemctl restart nginx
-        EOSSH
+          echo "✅ Using existing deployment at $INSTANCE_IP"
+          echo "ℹ️  Note: Manual update required for latest changes"
           
           echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
-          echo "DEPLOYMENT_TYPE=update" >> $GITHUB_ENV
+          echo "DEPLOYMENT_TYPE=existing" >> $GITHUB_ENV
         else
           echo "🆕 Creating new instance"
           ./deploy.sh
