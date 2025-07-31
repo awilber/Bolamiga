@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="gameContainer" class="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+</div>
+
+<div class="game-hud">
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">MINIMAL GAME TEST</span>
+    </div>
+</div>
+
+<script>
+console.log('🎮 Minimal Game Test - iPhone Focused');
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// iPhone Detection (same as main game)
+const isIPhone = /iPhone|iPod/i.test(navigator.userAgent);
+console.log('📱 iPhone detected:', isIPhone);
+
+// Simple game objects - exactly like debug test approach
+let player = {
+    x: 50,
+    y: 300,
+    width: 40,
+    height: 30,
+    color: '#00FF00' // Same green that works in debug
+};
+
+let enemy = {
+    x: 500,
+    y: 250,
+    width: 40,
+    height: 30,
+    color: '#FF0000' // Same red that works in debug
+};
+
+let bullet = {
+    x: 150,
+    y: 315,
+    width: 10,
+    height: 4,
+    color: '#FFFF00' // Same yellow that works in debug
+};
+
+// Simple draw function - copy debug test approach exactly
+function drawGame() {
+    // Clear with same background as debug test
+    ctx.fillStyle = '#000022';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw player - exactly like debug test
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    
+    // Draw enemy - exactly like debug test  
+    ctx.fillStyle = enemy.color;
+    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    
+    // Draw bullet - exactly like debug test
+    ctx.fillStyle = bullet.color;
+    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    
+    // Add text like debug test
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '20px Arial';
+    ctx.fillText('MINIMAL GAME', 300, 50);
+    
+    // iPhone-specific status
+    if (isIPhone) {
+        ctx.font = '16px Arial';
+        ctx.fillText('iPhone Mode Active', 300, 80);
+    }
+}
+
+// Simple animation loop - no complex game logic
+let animationFrame = 0;
+function gameLoop() {
+    drawGame();
+    
+    // Simple movement - just move bullet right
+    bullet.x += 2;
+    if (bullet.x > canvas.width) {
+        bullet.x = player.x + player.width;
+    }
+    
+    animationFrame++;
+    requestAnimationFrame(gameLoop);
+}
+
+// Start immediately - no waiting, no complex initialization
+console.log('🚀 Starting minimal game loop');
+gameLoop();
+
+// Test canvas immediately like debug test
+setTimeout(() => {
+    const imageData = ctx.getImageData(player.x + 20, player.y + 15, 1, 1);
+    const pixel = imageData.data;
+    const isGreen = pixel[1] > 200 && pixel[0] < 50 && pixel[2] < 50;
+    console.log('🎯 Player pixel test:', isGreen ? 'GREEN FOUND' : 'NO GREEN', 
+               `R${pixel[0]} G${pixel[1]} B${pixel[2]}`);
+}, 1000);
+
+console.log('✅ Minimal game initialized');
+</script>
+{% endblock %}
