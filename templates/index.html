@@ -119,14 +119,29 @@ function initMenuAudio() {
 }
 
 function playMenuBeep(frequency = 800, duration = 0.1) {
+    // Try to initialize audio if not ready
+    if (!menuAudioContext) {
+        initMenuAudio();
+    }
+    
     if (!menuAudioContext) return;
     
     try {
         // Resume context if suspended
         if (menuAudioContext.state === 'suspended') {
-            menuAudioContext.resume();
+            menuAudioContext.resume().then(() => {
+                playMenuBeepInternal(frequency, duration);
+            });
+        } else {
+            playMenuBeepInternal(frequency, duration);
         }
-        
+    } catch (e) {
+        // Audio error, silently continue
+    }
+}
+
+function playMenuBeepInternal(frequency, duration) {
+    try {
         const oscillator = menuAudioContext.createOscillator();
         const gainNode = menuAudioContext.createGain();
         
@@ -136,7 +151,7 @@ function playMenuBeep(frequency = 800, duration = 0.1) {
         oscillator.frequency.setValueAtTime(frequency, menuAudioContext.currentTime);
         oscillator.type = 'square';
         
-        gainNode.gain.setValueAtTime(0.15, menuAudioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, menuAudioContext.currentTime); // Even softer
         gainNode.gain.exponentialRampToValueAtTime(0.01, menuAudioContext.currentTime + duration);
         
         oscillator.start(menuAudioContext.currentTime);
@@ -165,13 +180,19 @@ function setupMenuAudio() {
     });
 }
 
-// User interaction to initialize audio (required by browsers)
-document.addEventListener('click', function initAudioOnClick() {
+// Multiple ways to initialize audio (required by browsers)
+function ensureAudioReady() {
     initMenuAudio();
     if (menuAudioContext && menuAudioContext.state === 'suspended') {
         menuAudioContext.resume();
     }
-}, { once: true });
+}
+
+// Try to initialize audio on any user interaction
+document.addEventListener('click', ensureAudioReady, { once: true });
+document.addEventListener('mouseover', ensureAudioReady, { once: true });
+document.addEventListener('touchstart', ensureAudioReady, { once: true });
+document.addEventListener('keydown', ensureAudioReady, { once: true });
 
 // Setup menu audio after DOM loads and menu becomes visible
 function initMenuSounds() {

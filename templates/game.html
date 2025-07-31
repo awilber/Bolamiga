@@ -352,8 +352,13 @@ class Bullet {
         ctx.fillStyle = bulletColor;
         ctx.fillRect(this.x, this.y, this.width, this.height);
         
-        // Add glow effect (skip on iPhone for performance)
-        if (!currentPlatformConfig.platform.isIPhone) {
+        // iPhone: Add thick borders for bullet visibility
+        if (currentPlatformConfig.platform.isIPhone) {
+            ctx.strokeStyle = this.fromPlayer ? '#FFFFFF' : '#FF0000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.x - 1, this.y - 1, this.width + 2, this.height + 2);
+        } else {
+            // Add glow effect for non-iPhone devices
             ctx.shadowColor = bulletColor;
             ctx.shadowBlur = 5;
             ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -423,10 +428,14 @@ class Enemy {
             
             // Add iPhone-specific visual enhancements for enemies
             if (currentPlatformConfig.platform.isIPhone) {
-                // Red border to distinguish from player
+                // Thick red border to distinguish from player
                 ctx.strokeStyle = '#FF0000';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(this.x, this.y, this.width, this.height);
+                ctx.lineWidth = 3;
+                ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+                
+                // Red center dot for enemy core
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(this.x + this.width/2 - 2, this.y + this.height/2 - 2, 4, 4);
             }
         }
         
@@ -794,26 +803,51 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
+    // iPhone Chrome Fix: Force clear rendering context
+    if (currentPlatformConfig.platform.isIPhone) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1.0;
+        ctx.globalCompositeOperation = 'source-over';
+    }
+    
     // iPhone Debug: Log game state periodically
     if (currentPlatformConfig.platform.isIPhone && Math.random() < 0.01) {
         console.log(`🎮 Game Debug - Player: (${Math.round(player.x)}, ${Math.round(player.y)}), Canvas: ${canvas.width}x${canvas.height}, Enemies: ${enemies.length}, Bullets: ${bullets.length}`);
     }
     
-    // Screen shake effect
-    if (screenShakeIntensity > 0) {
+    // Screen shake effect (disabled on iPhone for stability)
+    if (!currentPlatformConfig.platform.isIPhone && screenShakeIntensity > 0) {
         screenShakeX = (Math.random() - 0.5) * screenShakeIntensity;
         screenShakeY = (Math.random() - 0.5) * screenShakeIntensity;
         screenShakeIntensity *= 0.9; // Decay shake
         if (screenShakeIntensity < 0.1) screenShakeIntensity = 0;
     }
     
-    // Apply screen shake
-    ctx.save();
-    ctx.translate(screenShakeX, screenShakeY);
+    // Apply screen shake (only if not iPhone)
+    if (!currentPlatformConfig.platform.isIPhone) {
+        ctx.save();
+        ctx.translate(screenShakeX, screenShakeY);
+    }
     
-    // Clear canvas - Fix coordinate issue for mobile
-    ctx.fillStyle = '#000';
+    // Clear canvas with iPhone-specific background
+    ctx.fillStyle = currentPlatformConfig.platform.isIPhone ? '#001100' : '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // iPhone Chrome: Force visible test elements first
+    if (currentPlatformConfig.platform.isIPhone) {
+        // Draw bright white border around entire canvas 
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+        
+        // Draw corner markers
+        ctx.fillStyle = '#FFFF00';
+        ctx.fillRect(10, 10, 20, 20);
+        ctx.fillRect(canvas.width - 30, 10, 20, 20);
+        ctx.fillRect(10, canvas.height - 30, 20, 20);
+        ctx.fillRect(canvas.width - 30, canvas.height - 30, 20, 20);
+    }
     
     // Draw starfield background
     drawStarfield();
@@ -834,12 +868,16 @@ function drawGame() {
         ctx.fillStyle = currentPlatformConfig.platform.isIPhone ? '#00FF41' : '#0f0'; // Matrix green for iPhone
         ctx.fillRect(player.x, player.y, player.width, player.height);
         
-        // Add iPhone-specific visual enhancements
+        // Add iPhone-specific visual enhancements  
         if (currentPlatformConfig.platform.isIPhone) {
-            // Bright yellow border for maximum visibility
+            // Extra bright, thick yellow border for maximum visibility
             ctx.strokeStyle = '#FFFF00';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(player.x - 1, player.y - 1, player.width + 2, player.height + 2);
+            ctx.lineWidth = 4;
+            ctx.strokeRect(player.x - 3, player.y - 3, player.width + 6, player.height + 6);
+            
+            // White center dot for ship core
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(player.x + player.width/2 - 3, player.y + player.height/2 - 3, 6, 6);
             
             // Add a small white dot in center as pilot indicator
             ctx.fillStyle = '#FFFFFF';
@@ -873,8 +911,18 @@ function drawGame() {
         ctx.fillText(`Game Running: ${gameState.gameOver ? 'NO' : 'YES'}`, 10, 60);
     }
     
-    // Restore screen shake transformation
-    ctx.restore();
+    // Restore screen shake transformation (only if applied)
+    if (!currentPlatformConfig.platform.isIPhone) {
+        ctx.restore();
+    } else {
+        // Force final context reset for iPhone
+        ctx.restore();
+        
+        // iPhone Chrome: Add final visibility test
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('BOLAMIGA ACTIVE', 10, canvas.height - 10);
+    }
 }
 
 // Enhanced sprite and terrain system
@@ -1418,7 +1466,7 @@ class AmigaChiptunePlayer {
     createTracks() {
         // Blood Money inspired theme - half speed, closer to original melody
         this.tracks.set('main_theme', {
-            tempo: 45,  // Half the previous speed (90 -> 45)
+            tempo: 22.5,  // Half as fast again (45 -> 22.5 BPM)
             pattern: [
                 // Bass line (channel 1) - Blood Money inspired bass pattern  
                 {channel: 0, notes: [
@@ -1457,7 +1505,7 @@ class AmigaChiptunePlayer {
         
         // Combat music - Half speed, still urgent but more atmospheric
         this.tracks.set('combat', {
-            tempo: 55,  // Half the previous speed (110 -> 55)
+            tempo: 27.5,  // Half as fast again (55 -> 27.5 BPM)
             pattern: [
                 // Aggressive bass
                 {channel: 0, notes: [
@@ -1561,7 +1609,7 @@ class AmigaChiptunePlayer {
         const release = 0.2;
         
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, startTime + attack);  // Much gentler peak
+        gainNode.gain.linearRampToValueAtTime(0.2, startTime + attack);  // Even gentler peak
         gainNode.gain.linearRampToValueAtTime(sustain, startTime + attack + decay);
         gainNode.gain.setValueAtTime(sustain, startTime + duration - release);
         gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
@@ -1583,7 +1631,7 @@ class AmigaChiptunePlayer {
     
     setVolume(volume) {
         if (this.masterGainNode) {
-            this.masterGainNode.gain.setValueAtTime(volume * 0.06, this.audioContext.currentTime); // Even softer maximum
+            this.masterGainNode.gain.setValueAtTime(volume * 0.04, this.audioContext.currentTime); // Ultra soft maximum
         }
     }
 }
