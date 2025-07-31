@@ -119,15 +119,15 @@ function initMenuAudio() {
 }
 
 function playMenuBeep(frequency = 800, duration = 0.1) {
-    // Try to initialize audio if not ready
-    if (!menuAudioContext) {
+    // iPhone Chrome: Force audio initialization on every call
+    if (!menuAudioContext || menuAudioContext.state === 'closed') {
         initMenuAudio();
     }
     
     if (!menuAudioContext) return;
     
     try {
-        // Resume context if suspended
+        // iPhone Chrome: Always resume context first
         if (menuAudioContext.state === 'suspended') {
             menuAudioContext.resume().then(() => {
                 playMenuBeepInternal(frequency, duration);
@@ -136,7 +136,10 @@ function playMenuBeep(frequency = 800, duration = 0.1) {
             playMenuBeepInternal(frequency, duration);
         }
     } catch (e) {
-        // Audio error, silently continue
+        // iPhone Chrome: Try reinitializing on error
+        console.log('🔊 Audio error, reinitializing...');
+        menuAudioContext = null;
+        initMenuAudio();
     }
 }
 

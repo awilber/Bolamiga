@@ -122,45 +122,61 @@ const currentPlatformConfig = PlatformManager.getCurrentConfig();
 console.log('Platform detected:', currentPlatformConfig.platform);
 console.log('Using config:', currentPlatformConfig);
 
-// iPhone Chrome Fix: Enable debug mode and force canvas visibility
+// iPhone Chrome Critical Fix: Complete canvas rendering solution
 if (currentPlatformConfig.platform.isIPhone) {
-    console.log('🚨 iPhone Chrome detected - activating emergency visibility mode');
+    console.log('🚨 iPhone Chrome detected - implementing comprehensive canvas fix');
     
-    // Show debug overlay
+    // Hide debug overlay - focus on actual game
     const debugDiv = document.getElementById('iphone-debug');
     if (debugDiv) {
-        debugDiv.style.display = 'block';
-        debugDiv.style.zIndex = '5'; // Below canvas but visible
-        
-        const debugInfo = document.getElementById('debug-info');
-        if (debugInfo) {
-            debugInfo.innerHTML = `
-                User Agent: ${navigator.userAgent}<br>
-                Screen: ${screen.width}x${screen.height}<br>
-                Window: ${window.innerWidth}x${window.innerHeight}<br>
-                Canvas: Loading...
-            `;
-        }
+        debugDiv.style.display = 'none';
     }
     
-    // Force canvas styling for iPhone Chrome
+    // iPhone Chrome Canvas Rendering Fix
     const canvas = document.getElementById('gameCanvas');
     if (canvas) {
-        canvas.style.background = '#002200';
-        canvas.style.border = '3px solid #FFFF00';
+        // Force canvas to be a replaced element
         canvas.style.display = 'block';
         canvas.style.visibility = 'visible';
         canvas.style.opacity = '1';
-        canvas.style.zIndex = '10';
         canvas.style.position = 'relative';
+        canvas.style.zIndex = '100';
         
-        // Update debug info with canvas dimensions
-        setTimeout(() => {
-            const debugInfo = document.getElementById('debug-info');
-            if (debugInfo) {
-                debugInfo.innerHTML += `<br>Canvas DOM: ${canvas.clientWidth}x${canvas.clientHeight}<br>Canvas Internal: ${canvas.width}x${canvas.height}`;
-            }
-        }, 1000);
+        // iPhone-specific canvas dimensions - force fixed size
+        canvas.width = 800;
+        canvas.height = 600;
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.maxWidth = '100vw';
+        canvas.style.maxHeight = '80vh';
+        canvas.style.objectFit = 'contain';
+        
+        // Critical iPhone Chrome fix: Force hardware acceleration
+        canvas.style.transform = 'translateZ(0)';
+        canvas.style.webkitTransform = 'translateZ(0)';
+        canvas.style.willChange = 'transform';
+        
+        // iPhone Chrome context fix: Recreate context if needed
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            // Force context activation
+            ctx.save();
+            ctx.fillStyle = '#002200';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            
+            // Test render to activate context
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(10, 10, 50, 30);
+            ctx.fillStyle = '#FFFF00';
+            ctx.fillText('TEST RENDER', 70, 30);
+            
+            console.log('🎮 iPhone canvas context activated successfully');
+        }
+        
+        // Force canvas to front
+        canvas.parentElement.style.zIndex = '1000';
+        canvas.parentElement.style.position = 'relative';
     }
 }
 
@@ -237,19 +253,32 @@ let gameState = {
     level: 1
 };
 
-// Player object with responsive positioning
+// Player object with iPhone Chrome fixes
 let player = {
-    x: currentPlatformConfig.getPlayerStartX(800),
-    y: currentPlatformConfig.getPlayerStartY(600),
+    x: currentPlatformConfig.platform.isIPhone ? 50 : currentPlatformConfig.getPlayerStartX(800),
+    y: currentPlatformConfig.platform.isIPhone ? 300 : currentPlatformConfig.getPlayerStartY(600),
     width: 32,
     height: 24,
     speed: 200,
     health: 100,
     maxHealth: 100,
     // Store original positions for reset
-    startX: currentPlatformConfig.getPlayerStartX(800),
-    startY: currentPlatformConfig.getPlayerStartY(600)
+    startX: currentPlatformConfig.platform.isIPhone ? 50 : currentPlatformConfig.getPlayerStartX(800),
+    startY: currentPlatformConfig.platform.isIPhone ? 300 : currentPlatformConfig.getPlayerStartY(600)
 };
+
+// iPhone Chrome: Immediate game initialization
+if (currentPlatformConfig.platform.isIPhone) {
+    console.log('📱 iPhone player initialized at:', player.x, player.y);
+    
+    // Start with an enemy for immediate gameplay testing
+    setTimeout(() => {
+        if (enemies.length === 0) {
+            enemies.push(new Enemy(canvas.width - 100, 300));
+            console.log('📱 iPhone: Test enemy added');
+        }
+    }, 500);
+}
 
 // Game arrays
 let bullets = [];
@@ -851,25 +880,48 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-    // iPhone Chrome Critical Fix: Aggressive canvas reset and visibility
+    // iPhone Chrome: Simplified, focused rendering approach
     if (currentPlatformConfig.platform.isIPhone) {
-        // Force canvas element visibility every frame
-        const canvasElement = document.getElementById('gameCanvas');
-        if (canvasElement) {
-            canvasElement.style.display = 'block';
-            canvasElement.style.visibility = 'visible';
-            canvasElement.style.opacity = '1';
-        }
-        
-        // Force rendering context reset
+        // Force context state reset - critical for iPhone Chrome
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
         
-        // Force canvas background before drawing
-        ctx.fillStyle = '#002200';
+        // Clear canvas with solid background
+        ctx.fillStyle = '#000011'; // Dark blue-black
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // iPhone: Draw simple game elements first for immediate visibility
+        if (player) {
+            // Draw player as bright rectangle - no sprites
+            ctx.fillStyle = '#00FF00'; // Bright green
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Bright outline for extra visibility
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(player.x - 1, player.y - 1, player.width + 2, player.height + 2);
+        }
+        
+        // Draw simple bullets
+        bullets.forEach(bullet => {
+            ctx.fillStyle = bullet.fromPlayer ? '#FFFF00' : '#FF4500';
+            ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        });
+        
+        // Draw simple enemies
+        enemies.forEach(enemy => {
+            ctx.fillStyle = '#FF0000'; // Bright red
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        });
+        
+        // Skip complex rendering for iPhone - just show game state
+        ctx.restore();
+        return; // Exit early for iPhone - keep it simple
     }
     
     // iPhone Debug: Log game state periodically
@@ -1720,10 +1772,20 @@ class AmigaChiptunePlayer {
 // Global music player instance
 let chiptunePlayer = null;
 
-// Main game loop
+// Main game loop with iPhone Chrome optimizations
 function gameLoop(currentTime) {
     const deltaTime = currentTime - lastTime;
     lastTime = currentTime;
+    
+    // iPhone Chrome: Ensure canvas is always visible
+    if (currentPlatformConfig.platform.isIPhone) {
+        const canvas = document.getElementById('gameCanvas');
+        if (canvas && canvas.style.display !== 'block') {
+            canvas.style.display = 'block';
+            canvas.style.visibility = 'visible';
+            canvas.style.opacity = '1';
+        }
+    }
     
     handleInput(deltaTime);
     updateGame(deltaTime);
