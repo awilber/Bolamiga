@@ -20,7 +20,7 @@ class BolamigaQATester:
         
     def log(self, message, level="INFO"):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{timestamp}] [{level}] {message}")
+        print("[{}] [{}] {}".format(timestamp, level, message))
     
     def check_dependencies(self):
         """Check if required QA utilities are available"""
