@@ -30,6 +30,10 @@ def get_highscores():
 def health_check():
     return jsonify({"status": "healthy", "service": "bolamiga"})
 
+@app.route('/minimal')
+def minimal_game():
+    return render_template('minimal-game.html')
+
 if __name__ == '__main__':
     # Port management
     port = int(os.environ.get('PORT', 5030))
