@@ -378,11 +378,22 @@
             .game-container {
                 height: calc(100vh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
                 padding: 2px;
+                background: #001100 !important; /* Force visible background */
+                border: 3px solid #FFFFFF !important; /* White border for debugging visibility */
             }
             
             canvas {
-                width: calc(100vw - 4px);
-                height: calc(100vh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                width: calc(100vw - 16px) !important; /* Reduced to ensure canvas fits */
+                height: calc(100vh - 120px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+                background: #002200 !important; /* Force canvas background color */
+                border: 2px solid #FFFF00 !important; /* Yellow border around canvas */
+                display: block !important; /* Force display */
+                visibility: visible !important; /* Force visibility */
+                opacity: 1 !important; /* Force full opacity */
+                max-width: 100% !important;
+                max-height: 100% !important;
+                position: relative !important; /* Ensure proper positioning */
+                z-index: 10 !important; /* Ensure canvas is above background */
             }
             
             .game-hud {
@@ -390,12 +401,14 @@
                 top: calc(env(safe-area-inset-top, 0) + 4px);
                 left: 4px;
                 right: 4px;
+                z-index: 1000 !important; /* Ensure HUD visibility */
             }
             
             .hud-item {
                 font-size: 9px;
                 padding: 3px 6px;
                 min-width: 50px;
+                background: rgba(0, 255, 65, 0.2) !important; /* Force HUD item visibility */
             }
             
             .status-bar {

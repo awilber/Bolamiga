@@ -11,7 +11,7 @@ import subprocess
 import json
 import time
 import socket
-from pathlib import Path
+import os.path
 
 def check_port(port):
     """Check if a port is available"""
@@ -41,7 +41,7 @@ def kill_existing_processes():
                                 pwd_result = subprocess.run(['pwdx', pid], capture_output=True, text=True, check=False)
                                 if pwd_result.stdout and current_dir in pwd_result.stdout:
                                     subprocess.run(['kill', '-9', pid], check=False)
-                                    print(f"✅ Killed Bolamiga process {pid} from current directory")
+                                    print("✅ Killed Bolamiga process {} from current directory".format(pid))
                             except:
                                 pass
         except:
@@ -54,7 +54,7 @@ def kill_existing_processes():
                     pid = f.read().strip()
                 subprocess.run(['kill', '-9', pid], check=False)
                 os.remove('bolamiga.pid')
-                print(f"✅ Killed Bolamiga process {pid} from PID file")
+                print("✅ Killed Bolamiga process {} from PID file".format(pid))
             except:
                 pass
         

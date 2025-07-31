@@ -2,7 +2,13 @@
 
 {% block content %}
 <div id="gameContainer" class="game-container">
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- iPhone Chrome Debug: Force canvas visibility -->
+    <div id="iphone-debug" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #001100; border: 5px solid #FFFFFF; z-index: 1;">
+        <div style="color: #FFFFFF; font-size: 16px; text-align: center; margin-top: 20px;">iPhone DEBUG MODE</div>
+        <div id="debug-info" style="color: #FFFF00; font-size: 12px; margin: 10px;"></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600" style="background: #002200;"></canvas>
 </div>
 
 <!-- Professional Dark Theme HUD -->
@@ -115,6 +121,48 @@ const PlatformManager = {
 const currentPlatformConfig = PlatformManager.getCurrentConfig();
 console.log('Platform detected:', currentPlatformConfig.platform);
 console.log('Using config:', currentPlatformConfig);
+
+// iPhone Chrome Fix: Enable debug mode and force canvas visibility
+if (currentPlatformConfig.platform.isIPhone) {
+    console.log('🚨 iPhone Chrome detected - activating emergency visibility mode');
+    
+    // Show debug overlay
+    const debugDiv = document.getElementById('iphone-debug');
+    if (debugDiv) {
+        debugDiv.style.display = 'block';
+        debugDiv.style.zIndex = '5'; // Below canvas but visible
+        
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            debugInfo.innerHTML = `
+                User Agent: ${navigator.userAgent}<br>
+                Screen: ${screen.width}x${screen.height}<br>
+                Window: ${window.innerWidth}x${window.innerHeight}<br>
+                Canvas: Loading...
+            `;
+        }
+    }
+    
+    // Force canvas styling for iPhone Chrome
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) {
+        canvas.style.background = '#002200';
+        canvas.style.border = '3px solid #FFFF00';
+        canvas.style.display = 'block';
+        canvas.style.visibility = 'visible';
+        canvas.style.opacity = '1';
+        canvas.style.zIndex = '10';
+        canvas.style.position = 'relative';
+        
+        // Update debug info with canvas dimensions
+        setTimeout(() => {
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                debugInfo.innerHTML += `<br>Canvas DOM: ${canvas.clientWidth}x${canvas.clientHeight}<br>Canvas Internal: ${canvas.width}x${canvas.height}`;
+            }
+        }, 1000);
+    }
+}
 
 // Mobile responsive canvas setup
 function setupResponsiveCanvas() {
@@ -803,12 +851,25 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-    // iPhone Chrome Fix: Force clear rendering context
+    // iPhone Chrome Critical Fix: Aggressive canvas reset and visibility
     if (currentPlatformConfig.platform.isIPhone) {
+        // Force canvas element visibility every frame
+        const canvasElement = document.getElementById('gameCanvas');
+        if (canvasElement) {
+            canvasElement.style.display = 'block';
+            canvasElement.style.visibility = 'visible';
+            canvasElement.style.opacity = '1';
+        }
+        
+        // Force rendering context reset
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
+        
+        // Force canvas background before drawing
+        ctx.fillStyle = '#002200';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     
     // iPhone Debug: Log game state periodically
@@ -830,23 +891,43 @@ function drawGame() {
         ctx.translate(screenShakeX, screenShakeY);
     }
     
-    // Clear canvas with iPhone-specific background
-    ctx.fillStyle = currentPlatformConfig.platform.isIPhone ? '#001100' : '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Clear canvas with iPhone-specific background (only if not already done)
+    if (!currentPlatformConfig.platform.isIPhone) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     
-    // iPhone Chrome: Force visible test elements first
+    // iPhone Chrome: Maximum visibility test elements and game area
     if (currentPlatformConfig.platform.isIPhone) {
         // Draw bright white border around entire canvas 
         ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+        ctx.lineWidth = 5;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
         
-        // Draw corner markers
+        // Draw large corner markers for visibility testing
         ctx.fillStyle = '#FFFF00';
-        ctx.fillRect(10, 10, 20, 20);
-        ctx.fillRect(canvas.width - 30, 10, 20, 20);
-        ctx.fillRect(10, canvas.height - 30, 20, 20);
-        ctx.fillRect(canvas.width - 30, canvas.height - 30, 20, 20);
+        ctx.fillRect(5, 5, 40, 40);
+        ctx.fillRect(canvas.width - 45, 5, 40, 40);
+        ctx.fillRect(5, canvas.height - 45, 40, 40);
+        ctx.fillRect(canvas.width - 45, canvas.height - 45, 40, 40);
+        
+        // Draw center cross for reference
+        ctx.strokeStyle = '#FF0000';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2 - 50, canvas.height/2);
+        ctx.lineTo(canvas.width/2 + 50, canvas.height/2);
+        ctx.moveTo(canvas.width/2, canvas.height/2 - 50);
+        ctx.lineTo(canvas.width/2, canvas.height/2 + 50);
+        ctx.stroke();
+        
+        // Large text for immediate visibility confirmation
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('GAME ACTIVE', canvas.width/2, canvas.height/2 - 100);
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(`${canvas.width}x${canvas.height}`, canvas.width/2, canvas.height/2 - 70);
     }
     
     // Draw starfield background
