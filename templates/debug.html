@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="padding: 20px; font-family: monospace; background: #000; color: #0f0;">
+    <h1>iPhone Chrome Canvas Debug Test</h1>
+    
+    <!-- Canvas Test 1: Basic Drawing -->
+    <h2>Test 1: Basic Canvas Drawing</h2>
+    <canvas id="testCanvas1" width="400" height="200" style="border: 2px solid #fff; background: #222;"></canvas>
+    <div id="test1Status"></div>
+    
+    <!-- Canvas Test 2: Animation Loop -->
+    <h2>Test 2: Animation Loop</h2>
+    <canvas id="testCanvas2" width="400" height="200" style="border: 2px solid #fff; background: #222;"></canvas>
+    <div id="test2Status"></div>
+    
+    <!-- Canvas Test 3: Pixel Data Verification -->
+    <h2>Test 3: Pixel Data Analysis</h2>
+    <canvas id="testCanvas3" width="400" height="200" style="border: 2px solid #fff; background: #222;"></canvas>
+    <div id="test3Status"></div>
+    
+    <!-- Device Information -->
+    <h2>Device Information</h2>
+    <div id="deviceInfo"></div>
+    
+    <!-- Real-time Canvas Analysis -->
+    <h2>Real-time Canvas Analysis</h2>
+    <div id="canvasAnalysis"></div>
+    
+    <!-- Console Output -->
+    <h2>Debug Console</h2>
+    <div id="debugConsole" style="background: #111; padding: 10px; height: 200px; overflow-y: scroll; border: 1px solid #333;"></div>
+</div>
+
+<script>
+// Debug console replacement
+function debugLog(message) {
+    const console = document.getElementById('debugConsole');
+    const timestamp = new Date().toLocaleTimeString();
+    console.innerHTML += `[${timestamp}] ${message}<br>`;
+    console.scrollTop = console.scrollHeight;
+}
+
+// Device detection and info
+function detectDevice() {
+    const info = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        screen: `${screen.width}x${screen.height}`,
+        window: `${window.innerWidth}x${window.innerHeight}`,
+        devicePixelRatio: window.devicePixelRatio,
+        isIPhone: /iPhone|iPod/i.test(navigator.userAgent),
+        isChrome: /Chrome/i.test(navigator.userAgent),
+        isSafari: /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent)
+    };
+    
+    document.getElementById('deviceInfo').innerHTML = Object.entries(info)
+        .map(([key, value]) => `<strong>${key}:</strong> ${value}`).join('<br>');
+    
+    debugLog(`Device: ${info.isIPhone ? 'iPhone' : 'Other'}, Browser: ${info.isChrome ? 'Chrome' : info.isSafari ? 'Safari' : 'Unknown'}`);
+    return info;
+}
+
+// Test 1: Basic Canvas Drawing
+function test1BasicDrawing() {
+    const canvas = document.getElementById('testCanvas1');
+    const ctx = canvas.getContext('2d');
+    
+    try {
+        // Clear canvas
+        ctx.fillStyle = '#000022';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw test shapes
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(50, 50, 100, 50);
+        
+        ctx.fillStyle = '#FF0000';
+        ctx.fillRect(200, 50, 100, 50);
+        
+        ctx.fillStyle = '#FFFF00';
+        ctx.fillRect(125, 120, 150, 30);
+        
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '20px Arial';
+        ctx.fillText('CANVAS TEST', 140, 45);
+        
+        // Verify pixels were drawn
+        const imageData = ctx.getImageData(75, 75, 1, 1);
+        const pixel = imageData.data;
+        const isGreen = pixel[1] > 200 && pixel[0] < 50 && pixel[2] < 50;
+        
+        document.getElementById('test1Status').innerHTML = isGreen ? 
+            '<span style="color: #0f0;">✅ Basic drawing working</span>' :
+            '<span style="color: #f00;">❌ Basic drawing failed</span>';
+            
+        debugLog(`Test 1: Basic drawing ${isGreen ? 'PASSED' : 'FAILED'} - Pixel: R${pixel[0]} G${pixel[1]} B${pixel[2]}`);
+        
+        return isGreen;
+    } catch (e) {
+        document.getElementById('test1Status').innerHTML = '<span style="color: #f00;">❌ Error: ' + e.message + '</span>';
+        debugLog(`Test 1: ERROR - ${e.message}`);
+        return false;
+    }
+}
+
+// Test 2: Animation Loop
+function test2AnimationLoop() {
+    const canvas = document.getElementById('testCanvas2');
+    const ctx = canvas.getContext('2d');
+    let frame = 0;
+    let animationWorking = false;
+    
+    function animate() {
+        try {
+            // Clear canvas
+            ctx.fillStyle = '#001122';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Moving rectangle
+            const x = 50 + (frame % 300);
+            ctx.fillStyle = '#00FFFF';
+            ctx.fillRect(x, 75, 50, 50);
+            
+            // Frame counter
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px Arial';
+            ctx.fillText(`Frame: ${frame}`, 10, 30);
+            
+            frame++;
+            animationWorking = true;
+            
+            if (frame < 600) {
+                requestAnimationFrame(animate);
+            }
+        } catch (e) {
+            debugLog(`Animation error: ${e.message}`);
+        }
+    }
+    
+    animate();
+    
+    setTimeout(() => {
+        document.getElementById('test2Status').innerHTML = animationWorking ? 
+            '<span style="color: #0f0;">✅ Animation loop working</span>' :
+            '<span style="color: #f00;">❌ Animation loop failed</span>';
+        debugLog(`Test 2: Animation ${animationWorking ? 'PASSED' : 'FAILED'} - ${frame} frames rendered`);
+    }, 2000);
+}
+
+// Test 3: Pixel Data Verification
+function test3PixelAnalysis() {
+    const canvas = document.getElementById('testCanvas3');
+    const ctx = canvas.getContext('2d');
+    
+    try {
+        // Draw test pattern
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw colored squares
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+        colors.forEach((color, i) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(i * 60 + 20, 50, 50, 50);
+        });
+        
+        // Analyze entire canvas
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        let totalPixels = data.length / 4;
+        let nonBlackPixels = 0;
+        let coloredPixels = { red: 0, green: 0, blue: 0, yellow: 0, magenta: 0, cyan: 0 };
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            if (r > 10 || g > 10 || b > 10) {
+                nonBlackPixels++;
+                
+                // Color classification
+                if (r > 200 && g < 50 && b < 50) coloredPixels.red++;
+                else if (r < 50 && g > 200 && b < 50) coloredPixels.green++;
+                else if (r < 50 && g < 50 && b > 200) coloredPixels.blue++;
+                else if (r > 200 && g > 200 && b < 50) coloredPixels.yellow++;
+                else if (r > 200 && g < 50 && b > 200) coloredPixels.magenta++;
+                else if (r < 50 && g > 200 && b > 200) coloredPixels.cyan++;
+            }
+        }
+        
+        const renderingPercentage = (nonBlackPixels / totalPixels * 100).toFixed(1);
+        const isRendering = nonBlackPixels > 100;
+        
+        document.getElementById('test3Status').innerHTML = `
+            <div style="color: ${isRendering ? '#0f0' : '#f00'};">
+                ${isRendering ? '✅' : '❌'} Pixel Analysis: ${renderingPercentage}% non-black pixels
+            </div>
+            <div>Colors found: R:${coloredPixels.red} G:${coloredPixels.green} B:${coloredPixels.blue} Y:${coloredPixels.yellow} M:${coloredPixels.magenta} C:${coloredPixels.cyan}</div>
+        `;
+        
+        debugLog(`Test 3: Pixel analysis - ${renderingPercentage}% rendering, ${nonBlackPixels}/${totalPixels} pixels`);
+        
+        return isRendering;
+    } catch (e) {
+        document.getElementById('test3Status').innerHTML = '<span style="color: #f00;">❌ Error: ' + e.message + '</span>';
+        debugLog(`Test 3: ERROR - ${e.message}`);
+        return false;
+    }
+}
+
+// Real-time canvas analysis
+function startCanvasAnalysis() {
+    const canvas = document.getElementById('testCanvas3');
+    const analysisDiv = document.getElementById('canvasAnalysis');
+    
+    setInterval(() => {
+        try {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let nonBlackPixels = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] > 10 || data[i + 1] > 10 || data[i + 2] > 10) {
+                    nonBlackPixels++;
+                }
+            }
+            
+            analysisDiv.innerHTML = `Real-time: ${nonBlackPixels} colored pixels, ${((nonBlackPixels / (data.length / 4)) * 100).toFixed(1)}% rendered`;
+        } catch (e) {
+            analysisDiv.innerHTML = `Analysis error: ${e.message}`;
+        }
+    }, 1000);
+}
+
+// Run all tests
+window.addEventListener('load', () => {
+    debugLog('iPhone Canvas Debug Test Started');
+    
+    const deviceInfo = detectDevice();
+    
+    setTimeout(() => {
+        debugLog('Running Test 1: Basic Drawing');
+        test1BasicDrawing();
+    }, 500);
+    
+    setTimeout(() => {
+        debugLog('Running Test 2: Animation Loop');
+        test2AnimationLoop();
+    }, 1000);
+    
+    setTimeout(() => {
+        debugLog('Running Test 3: Pixel Analysis');
+        test3PixelAnalysis();
+        startCanvasAnalysis();
+    }, 1500);
+    
+    debugLog(`Tests initiated for ${deviceInfo.isIPhone ? 'iPhone' : 'non-iPhone'} device`);
+});
+</script>
+{% endblock %}

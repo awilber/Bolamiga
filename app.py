@@ -11,6 +11,10 @@ def index():
 def game():
     return render_template('game.html')
 
+@app.route('/debug')
+def debug():
+    return render_template('debug.html')
+
 @app.route('/api/highscores')
 def get_highscores():
     # Mock high scores data
