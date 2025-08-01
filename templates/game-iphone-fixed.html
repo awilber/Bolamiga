@@ -29,25 +29,81 @@
     </div>
 </div>
 
-<!-- Mobile Touch Controls -->
-<div id="touch-controls" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 8px; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 80px;">
-        <!-- Movement Controls (Left Side) -->
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <button class="touch-btn" id="move-left" ontouchstart="handleTouchStart('left')" ontouchend="handleTouchEnd('left')">←</button>
-                <div style="width: 60px; height: 60px; display: flex; flex-direction: column; justify-content: space-between; margin: 0 4px;">
-                    <button class="touch-btn" id="move-up" ontouchstart="handleTouchStart('up')" ontouchend="handleTouchEnd('up')">↑</button>
-                    <button class="touch-btn" id="move-down" ontouchstart="handleTouchStart('down')" ontouchend="handleTouchEnd('down')">↓</button>
-                </div>
-                <button class="touch-btn" id="move-right" ontouchstart="handleTouchStart('right')" ontouchend="handleTouchEnd('right')">→</button>
+<!-- Enhanced Mobile Touch Controls - D-Pad + Fire Button -->
+<div id="touch-controls" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 12px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); border-top: 1px solid rgba(0, 255, 0, 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 120px;">
+        
+        <!-- D-Pad (Left Side) -->
+        <div class="dpad-container" style="position: relative; width: 120px; height: 120px;">
+            <!-- D-Pad Cross Design -->
+            <div class="dpad-cross" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                <!-- Vertical Bar -->
+                <div style="position: absolute; width: 40px; height: 120px; background: rgba(0, 255, 0, 0.15); border: 2px solid #00ff00; border-radius: 6px; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);"></div>
+                <!-- Horizontal Bar -->
+                <div style="position: absolute; width: 120px; height: 40px; background: rgba(0, 255, 0, 0.15); border: 2px solid #00ff00; border-radius: 6px; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);"></div>
+                
+                <!-- Directional Buttons -->
+                <button class="dpad-btn dpad-up" id="dpad-up" 
+                        style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 36px; height: 36px;"
+                        ontouchstart="handleDpadStart('up')" ontouchend="handleDpadEnd('up')">
+                    <span style="font-size: 16px; font-weight: bold;">▲</span>
+                </button>
+                
+                <button class="dpad-btn dpad-down" id="dpad-down"
+                        style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 36px; height: 36px;"
+                        ontouchstart="handleDpadStart('down')" ontouchend="handleDpadEnd('down')">
+                    <span style="font-size: 16px; font-weight: bold;">▼</span>
+                </button>
+                
+                <button class="dpad-btn dpad-left" id="dpad-left"
+                        style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 36px; height: 36px;"
+                        ontouchstart="handleDpadStart('left')" ontouchend="handleDpadEnd('left')">
+                    <span style="font-size: 16px; font-weight: bold;">◀</span>
+                </button>
+                
+                <button class="dpad-btn dpad-right" id="dpad-right"
+                        style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 36px; height: 36px;"
+                        ontouchstart="handleDpadStart('right')" ontouchend="handleDpadEnd('right')">
+                    <span style="font-size: 16px; font-weight: bold;">▶</span>
+                </button>
+                
+                <!-- Center Button (Optional - for pause/menu) -->
+                <button class="dpad-btn dpad-center" id="dpad-center"
+                        style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%;"
+                        ontouchstart="handleDpadStart('center')" ontouchend="handleDpadEnd('center')">
+                    <span style="font-size: 10px;">⏸</span>
+                </button>
+            </div>
+            
+            <!-- D-Pad Label -->
+            <div style="position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); color: #888; font-size: 10px; text-align: center;">
+                MOVE
             </div>
         </div>
         
         <!-- Fire Controls (Right Side) -->
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <button class="touch-btn fire-btn" id="fire-btn" ontouchstart="handleTouchStart('fire')" ontouchend="handleTouchEnd('fire')">🔥</button>
-            <small style="color: #888; margin-top: 4px;">FIRE</small>
+        <div class="fire-controls" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <!-- Primary Fire Button -->
+            <button class="fire-btn fire-primary" id="fire-primary"
+                    style="width: 80px; height: 80px; border-radius: 50%;"
+                    ontouchstart="handleFireStart('primary')" ontouchend="handleFireEnd('primary')">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                    <span style="font-size: 24px;">🔥</span>
+                    <span style="font-size: 8px; font-weight: bold;">FIRE</span>
+                </div>
+            </button>
+            
+            <!-- Secondary Fire Button (Optional) -->
+            <button class="fire-btn fire-secondary" id="fire-secondary"
+                    style="width: 50px; height: 50px; border-radius: 50%;"
+                    ontouchstart="handleFireStart('secondary')" ontouchend="handleFireEnd('secondary')">
+                <span style="font-size: 16px;">💥</span>
+            </button>
+            
+            <!-- Fire Controls Label -->
+            <div style="color: #888; font-size: 10px; text-align: center; margin-top: 4px;">
+                WEAPONS
+            </div>
         </div>
     </div>
 </div>
@@ -143,23 +199,79 @@ document.addEventListener('keyup', (e) => {
     gameState.keys[e.key.toLowerCase()] = false;
 });
 
-// Touch controls
-function handleTouchStart(direction) {
+// Enhanced D-Pad Touch Controls
+function handleDpadStart(direction) {
+    // Add visual feedback
+    const button = document.getElementById(`dpad-${direction}`);
+    if (button) {
+        button.style.background = 'rgba(0, 255, 0, 0.4)';
+        button.style.transform = button.style.transform.replace(')', '') + ' scale(0.95)';
+    }
+    
+    // Handle movement
     switch(direction) {
         case 'left': gameState.keys['arrowleft'] = true; break;
         case 'right': gameState.keys['arrowright'] = true; break;
         case 'up': gameState.keys['arrowup'] = true; break;
         case 'down': gameState.keys['arrowdown'] = true; break;
-        case 'fire': fireBullet(); break;
+        case 'center': 
+            // Toggle pause or show menu
+            console.log('D-pad center pressed - pause/menu');
+            break;
     }
 }
 
-function handleTouchEnd(direction) {
+function handleDpadEnd(direction) {
+    // Remove visual feedback
+    const button = document.getElementById(`dpad-${direction}`);
+    if (button) {
+        button.style.background = '';
+        button.style.transform = button.style.transform.replace(' scale(0.95)', '');
+    }
+    
+    // Handle movement end
     switch(direction) {
         case 'left': gameState.keys['arrowleft'] = false; break;
         case 'right': gameState.keys['arrowright'] = false; break;
         case 'up': gameState.keys['arrowup'] = false; break;
         case 'down': gameState.keys['arrowdown'] = false; break;
+    }
+}
+
+// Enhanced Fire Controls
+function handleFireStart(type) {
+    // Add visual feedback
+    const button = document.getElementById(`fire-${type}`);
+    if (button) {
+        button.style.background = 'rgba(255, 255, 0, 0.5)';
+        button.style.transform = 'scale(0.9)';
+        button.style.boxShadow = '0 0 20px rgba(255, 255, 0, 0.6)';
+    }
+    
+    // Handle firing
+    switch(type) {
+        case 'primary':
+            fireBullet();
+            // Haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            break;
+        case 'secondary':
+            // Could be used for special weapons later
+            fireBullet();
+            console.log('Secondary fire activated');
+            break;
+    }
+}
+
+function handleFireEnd(type) {
+    // Remove visual feedback
+    const button = document.getElementById(`fire-${type}`);
+    if (button) {
+        button.style.background = '';
+        button.style.transform = '';
+        button.style.boxShadow = '';
     }
 }
 
@@ -392,39 +504,135 @@ console.log('📱 iPhone-compatible Bolamiga game engine loaded');
 </script>
 
 <style>
-.touch-btn {
-    width: 48px;
-    height: 48px;
+/* Enhanced D-Pad Styles */
+.dpad-btn {
     background: rgba(0, 255, 0, 0.2);
-    border: 1px solid #00ff00;
+    border: 2px solid #00ff00;
     border-radius: 8px;
     color: #00ff00;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2px;
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
+    transition: all 0.1s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.touch-btn:active {
+.dpad-btn:active {
     background: rgba(0, 255, 0, 0.4);
     transform: scale(0.95);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+.dpad-center {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #888;
+    color: #888;
+    font-size: 10px;
+}
+
+.dpad-center:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced Fire Button Styles */
 .fire-btn {
-    width: 60px;
-    height: 60px;
     background: rgba(255, 255, 0, 0.2);
-    border-color: #ffff00;
+    border: 3px solid #ffff00;
     color: #ffff00;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: all 0.1s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-.fire-btn:active {
-    background: rgba(255, 255, 0, 0.4);
+.fire-primary {
+    background: radial-gradient(circle, rgba(255, 255, 0, 0.3) 0%, rgba(255, 255, 0, 0.1) 100%);
+    border-color: #ffff00;
+    box-shadow: 0 4px 12px rgba(255, 255, 0, 0.3);
+}
+
+.fire-primary:active {
+    background: radial-gradient(circle, rgba(255, 255, 0, 0.5) 0%, rgba(255, 255, 0, 0.2) 100%);
+    transform: scale(0.9);
+    box-shadow: 0 2px 6px rgba(255, 255, 0, 0.5);
+}
+
+.fire-secondary {
+    background: radial-gradient(circle, rgba(255, 165, 0, 0.3) 0%, rgba(255, 165, 0, 0.1) 100%);
+    border-color: #ffa500;
+    color: #ffa500;
+    box-shadow: 0 3px 6px rgba(255, 165, 0, 0.3);
+}
+
+.fire-secondary:active {
+    background: radial-gradient(circle, rgba(255, 165, 0, 0.5) 0%, rgba(255, 165, 0, 0.2) 100%);
+    transform: scale(0.9);
+    box-shadow: 0 1px 3px rgba(255, 165, 0, 0.5);
+}
+
+/* D-Pad Cross Visual Enhancements */
+.dpad-cross {
+    filter: drop-shadow(0 0 10px rgba(0, 255, 0, 0.3));
+}
+
+/* Retro Gaming Aesthetic */
+.dpad-container {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.fire-controls {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-height: 600px) {
+    .dpad-container {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .dpad-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+    
+    .fire-primary {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .fire-secondary {
+        width: 45px;
+        height: 45px;
+    }
+}
+
+/* Animation for button presses */
+@keyframes buttonPress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+.dpad-btn.pressed {
+    animation: buttonPress 0.1s ease;
+}
+
+.fire-btn.pressed {
+    animation: buttonPress 0.1s ease;
 }
 </style>
 {% endblock %}
