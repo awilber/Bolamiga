@@ -1,0 +1,98 @@
+{
+  "test_suite": "AWS_Production_QA",
+  "timestamp": "2025-08-01T16:20:25.959488",
+  "base_url": "http://3.88.17.81",
+  "platform": "AWS EC2 Production",
+  "tests": [
+    {
+      "name": "root_page",
+      "status": "PASS",
+      "url": "http://3.88.17.81/",
+      "http_status": 200,
+      "content_size": 33682,
+      "content_check": true,
+      "response_time_ms": 72
+    },
+    {
+      "name": "game_page",
+      "status": "PASS",
+      "url": "http://3.88.17.81/game",
+      "http_status": 200,
+      "content_size": 102661,
+      "content_check": true,
+      "response_time_ms": 77
+    },
+    {
+      "name": "health_api",
+      "status": "PASS",
+      "url": "http://3.88.17.81/api/health",
+      "http_status": 200,
+      "content_size": 51,
+      "content_check": true,
+      "response_time_ms": 42
+    },
+    {
+      "name": "iphone_debug",
+      "status": "PASS",
+      "url": "http://3.88.17.81/debug",
+      "http_status": 200,
+      "content_size": 36426,
+      "content_check": true,
+      "response_time_ms": 80
+    },
+    {
+      "name": "minimal_working",
+      "status": "PASS",
+      "url": "http://3.88.17.81/minimal",
+      "http_status": 200,
+      "content_size": 29669,
+      "content_check": true,
+      "response_time_ms": 67
+    },
+    {
+      "name": "comparison_test",
+      "status": "PASS",
+      "url": "http://3.88.17.81/comparison",
+      "http_status": 200,
+      "content_size": 36408,
+      "content_check": true,
+      "response_time_ms": 66
+    }
+  ],
+  "iphone_fixes_verification": [
+    {
+      "feature": "iPhone Canvas Fix",
+      "status": "IMPLEMENTED",
+      "test_description": "Game page loads with iPhone-specific rendering code",
+      "verification_method": "Check for iPhone platform detection and minimal rendering"
+    },
+    {
+      "feature": "Touch Controls",
+      "status": "IMPLEMENTED",
+      "test_description": "Game page includes touch control buttons for mobile devices",
+      "verification_method": "Check for touch-controls div and button elements"
+    },
+    {
+      "feature": "Safe Area Support",
+      "status": "IMPLEMENTED",
+      "test_description": "Base template includes viewport-fit=cover and safe area CSS",
+      "verification_method": "Check for safe-area-inset CSS variables"
+    },
+    {
+      "feature": "Performance Optimization",
+      "status": "IMPLEMENTED",
+      "test_description": "Game includes iPhone-specific performance configurations",
+      "verification_method": "Check for iPhoneConfig object and frame rate limiting"
+    }
+  ],
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "failed_tests": 0,
+    "test_success_rate": 100.0,
+    "iphone_fixes_total": 4,
+    "iphone_fixes_implemented": 4,
+    "iphone_fixes_rate": 100.0
+  },
+  "overall_status": "FULLY_OPERATIONAL"
+}
