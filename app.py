@@ -34,6 +34,10 @@ def health_check():
 def minimal_game():
     return render_template('minimal-game.html')
 
+@app.route('/comparison')
+def comparison():
+    return render_template('comparison.html')
+
 if __name__ == '__main__':
     # Port management
     port = int(os.environ.get('PORT', 5030))

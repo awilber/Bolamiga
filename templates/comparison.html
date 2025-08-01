@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="padding: 20px; font-family: monospace; background: #000; color: #0f0;">
+    <h1>iPhone Game Comparison Test</h1>
+    
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <!-- Working Minimal Game Canvas -->
+        <div>
+            <h2>✅ WORKING: Minimal Game</h2>
+            <canvas id="workingCanvas" width="400" height="300" style="border: 2px solid #0f0; background: #222;"></canvas>
+            <div id="workingStatus"></div>
+        </div>
+        
+        <!-- Main Game Approach Canvas -->
+        <div>
+            <h2>❌ BROKEN: Main Game Approach</h2>
+            <canvas id="brokenCanvas" width="400" height="300" style="border: 2px solid #f00; background: #222;"></canvas>
+            <div id="brokenStatus"></div>
+        </div>
+    </div>
+    
+    <!-- Diagnostics -->
+    <h2>Diagnostics</h2>
+    <div id="diagnostics" style="background: #111; padding: 10px; border: 1px solid #333;"></div>
+    
+    <!-- Debug Console -->
+    <h2>Debug Log</h2>
+    <div id="debugLog" style="background: #111; padding: 10px; height: 200px; overflow-y: scroll; border: 1px solid #333;"></div>
+</div>
+
+<script>
+// Debug logging
+function log(message) {
+    const debugLog = document.getElementById('debugLog');
+    const timestamp = new Date().toLocaleTimeString();
+    debugLog.innerHTML += `[${timestamp}] ${message}<br>`;
+    debugLog.scrollTop = debugLog.scrollHeight;
+    console.log(message);
+}
+
+// Device detection
+const isIPhone = /iPhone|iPod/i.test(navigator.userAgent);
+log(`Device: ${isIPhone ? 'iPhone' : 'Other'}, UserAgent: ${navigator.userAgent}`);
+
+// WORKING APPROACH: Copy exact minimal game approach
+function runWorkingGame() {
+    const canvas = document.getElementById('workingCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    log('🟢 Starting WORKING minimal game approach');
+    
+    // Simple game objects - exactly like working minimal game
+    let player = { x: 25, y: 150, width: 30, height: 20, color: '#00FF00' };
+    let enemy = { x: 300, y: 125, width: 30, height: 20, color: '#FF0000' };
+    let bullet = { x: 75, y: 158, width: 8, height: 4, color: '#FFFF00' };
+    
+    function draw() {
+        // Clear with exact same approach as working minimal
+        ctx.fillStyle = '#000022';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw exactly like working minimal
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        
+        ctx.fillStyle = enemy.color;
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        
+        ctx.fillStyle = bullet.color;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        
+        // Text exactly like working minimal
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '16px Arial';
+        ctx.fillText('WORKING', 150, 30);
+        
+        // Simple animation
+        bullet.x += 1;
+        if (bullet.x > canvas.width) bullet.x = player.x + player.width;
+        
+        requestAnimationFrame(draw);
+    }
+    
+    draw();
+    log('🟢 Working game started');
+}
+
+// BROKEN APPROACH: Simulate main game platform detection logic
+function runBrokenGame() {
+    const canvas = document.getElementById('brokenCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    log('🔴 Starting BROKEN main game approach');
+    
+    // Simulate the PlatformManager complexity from main game
+    const PlatformManager = {
+        detectPlatform() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+            const isTablet = /ipad|android/i.test(userAgent) && !/mobile/i.test(userAgent);
+            const isIPhone = /iphone|ipod/i.test(userAgent);
+            const isAndroid = /android/i.test(userAgent);
+            
+            return {
+                isMobile,
+                isTablet, 
+                isIPhone,
+                isAndroid,
+                isDesktop: !isMobile && !isTablet,
+                platformType: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'
+            };
+        },
+        
+        getCurrentConfig() {
+            const platform = this.detectPlatform();
+            log(`🔴 Platform detected: ${JSON.stringify(platform)}`);
+            return { platform };
+        }
+    };
+    
+    const currentPlatformConfig = PlatformManager.getCurrentConfig();
+    
+    // Simulate complex game objects like main game
+    let gameState = { score: 0, lives: 3 };
+    let player = {
+        x: currentPlatformConfig.platform.isIPhone ? 25 : 100,
+        y: currentPlatformConfig.platform.isIPhone ? 150 : 150,
+        width: 32, height: 24
+    };
+    let enemies = [{ x: 300, y: 125, width: 32, height: 24 }];
+    let bullets = [{ x: 75, y: 158, width: 10, height: 4 }];
+    
+    // Simulate main game's complex drawGame function
+    function drawGame() {
+        log('🔴 drawGame called, iPhone detected: ' + currentPlatformConfig.platform.isIPhone);
+        
+        // iPhone: Use EXACT working approach from minimal game (this is the current main game code)
+        if (currentPlatformConfig.platform.isIPhone) {
+            log('🔴 iPhone branch executing');
+            
+            // Clear with same background as working minimal game
+            ctx.fillStyle = '#000022';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw player - EXACTLY like working minimal game
+            if (player) {
+                ctx.fillStyle = '#00FF00'; // Same green that works
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+                log('🔴 Player drawn at: ' + player.x + ',' + player.y);
+            }
+            
+            // Draw enemies - EXACTLY like working minimal game
+            enemies.forEach(enemy => {
+                ctx.fillStyle = '#FF0000'; // Same red that works
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                log('🔴 Enemy drawn at: ' + enemy.x + ',' + enemy.y);
+            });
+            
+            // Draw bullets - EXACTLY like working minimal game
+            bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFFF00'; // Same yellow that works
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                log('🔴 Bullet drawn at: ' + bullet.x + ',' + bullet.y);
+            });
+            
+            // Add status text like working minimal game
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px Arial';
+            ctx.fillText('BROKEN', 150, 30);
+            ctx.fillText('Score: ' + gameState.score, 150, 50);
+            
+            return; // Exit early - NO complex systems for iPhone
+        }
+        
+        log('🔴 Non-iPhone rendering (should not execute on iPhone)');
+        // Complex desktop rendering would go here
+    }
+    
+    // Simulate main game's game loop
+    function gameLoop() {
+        drawGame();
+        
+        // Simple animation
+        if (bullets[0]) {
+            bullets[0].x += 1;
+            if (bullets[0].x > canvas.width) bullets[0].x = player.x + player.width;
+        }
+        
+        requestAnimationFrame(gameLoop);
+    }
+    
+    log('🔴 Starting broken game loop');
+    gameLoop();
+}
+
+// Diagnostics
+function runDiagnostics() {
+    const diagnostics = document.getElementById('diagnostics');
+    
+    const info = {
+        userAgent: navigator.userAgent,
+        isIPhone: isIPhone,
+        canvasSupport: !!document.createElement('canvas').getContext,
+        canvasContextType: typeof document.createElement('canvas').getContext('2d'),
+        requestAnimationFrame: typeof requestAnimationFrame
+    };
+    
+    diagnostics.innerHTML = Object.entries(info)
+        .map(([key, value]) => `<strong>${key}:</strong> ${value}`).join('<br>');
+}
+
+// Start both tests
+window.addEventListener('load', () => {
+    log('🔍 iPhone Game Comparison Test Started');
+    runDiagnostics();
+    
+    setTimeout(() => {
+        runWorkingGame();
+        runBrokenGame();
+    }, 500);
+    
+    // Test pixel data after 2 seconds
+    setTimeout(() => {
+        // Test working canvas
+        const workingCanvas = document.getElementById('workingCanvas');
+        const workingCtx = workingCanvas.getContext('2d');
+        const workingPixel = workingCtx.getImageData(40, 160, 1, 1).data;
+        const workingGreen = workingPixel[1] > 200 && workingPixel[0] < 50;
+        document.getElementById('workingStatus').innerHTML = workingGreen ? 
+            '<span style="color: #0f0;">✅ Working - Green pixel found</span>' :
+            '<span style="color: #f00;">❌ Working failed - No green pixel</span>';
+        log(`🟢 Working pixel: R${workingPixel[0]} G${workingPixel[1]} B${workingPixel[2]} - ${workingGreen ? 'PASS' : 'FAIL'}`);
+        
+        // Test broken canvas  
+        const brokenCanvas = document.getElementById('brokenCanvas');
+        const brokenCtx = brokenCanvas.getContext('2d');
+        const brokenPixel = brokenCtx.getImageData(40, 160, 1, 1).data;
+        const brokenGreen = brokenPixel[1] > 200 && brokenPixel[0] < 50;
+        document.getElementById('brokenStatus').innerHTML = brokenGreen ? 
+            '<span style="color: #0f0;">✅ Broken actually works - Green pixel found</span>' :
+            '<span style="color: #f00;">❌ Broken as expected - No green pixel</span>';
+        log(`🔴 Broken pixel: R${brokenPixel[0]} G${brokenPixel[1]} B${brokenPixel[2]} - ${brokenGreen ? 'PASS' : 'FAIL'}`);
+        
+    }, 2000);
+});
+</script>
+{% endblock %}
