@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="gameContainer" class="game-container">
+    <canvas id="gameCanvas" width="800" height="600" style="background: #002200;"></canvas>
+</div>
+
+<!-- Professional Dark Theme HUD -->
+<div class="game-hud">
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">SCORE:</span> 
+        <span id="score" style="color: var(--color-retro-primary); font-weight: 600;">0</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">LIVES:</span> 
+        <span id="lives" style="color: var(--color-retro-success); font-weight: 600;">3</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">WEAPON:</span> 
+        <span id="weapon" style="color: var(--color-retro-secondary); font-weight: 600;">PULSE</span>
+    </div>
+    <div class="hud-item" id="health-display">
+        <span style="color: var(--color-text-secondary);">HEALTH:</span> 
+        <span id="health" style="color: var(--color-retro-success); font-weight: 600;">100</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">MUSIC:</span> 
+        <span id="music-status" style="color: var(--color-retro-secondary); font-weight: 600;">READY</span>
+    </div>
+</div>
+
+<!-- Mobile Touch Controls -->
+<div id="touch-controls" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 8px; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 80px;">
+        <!-- Movement Controls (Left Side) -->
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <button class="touch-btn" id="move-left" ontouchstart="handleTouchStart('left')" ontouchend="handleTouchEnd('left')">←</button>
+                <div style="width: 60px; height: 60px; display: flex; flex-direction: column; justify-content: space-between; margin: 0 4px;">
+                    <button class="touch-btn" id="move-up" ontouchstart="handleTouchStart('up')" ontouchend="handleTouchEnd('up')">↑</button>
+                    <button class="touch-btn" id="move-down" ontouchstart="handleTouchStart('down')" ontouchend="handleTouchEnd('down')">↓</button>
+                </div>
+                <button class="touch-btn" id="move-right" ontouchstart="handleTouchStart('right')" ontouchend="handleTouchEnd('right')">→</button>
+            </div>
+        </div>
+        
+        <!-- Fire Controls (Right Side) -->
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <button class="touch-btn fire-btn" id="fire-btn" ontouchstart="handleTouchStart('fire')" ontouchend="handleTouchEnd('fire')">🔥</button>
+            <small style="color: #888; margin-top: 4px;">FIRE</small>
+        </div>
+    </div>
+</div>
+
+<script>
+// Simplified iPhone-Compatible Game Engine
+// Based on working canvas-feature-test patterns
+
+// Device detection (simplified)
+const deviceInfo = {
+    isIPhone: /iPhone/.test(navigator.userAgent),
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+    isChrome: /Chrome/.test(navigator.userAgent),
+    screenWidth: screen.width,
+    screenHeight: screen.height,
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight
+};
+
+console.log('Device detected:', deviceInfo);
+
+// Show touch controls on mobile
+if (deviceInfo.isMobile) {
+    document.getElementById('touch-controls').style.display = 'block';
+    console.log('📱 Touch controls enabled');
+}
+
+// Game canvas setup (using proven working pattern from canvas tests)
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// iPhone-specific canvas optimization (from working canvas tests)
+if (deviceInfo.isIPhone) {
+    console.log('🍎 iPhone detected - applying proven canvas optimizations');
+    canvas.style.transform = 'translateZ(0)';
+    canvas.style.webkitTransform = 'translateZ(0)';
+    canvas.style.willChange = 'transform';
+}
+
+// Game state (simplified from working Test 6)
+const gameState = {
+    player: { 
+        x: 50, 
+        y: 300, 
+        width: 20, 
+        height: 15, 
+        health: 100,
+        speed: 4
+    },
+    enemies: [],
+    bullets: [],
+    particles: [],
+    terrain: [],
+    score: 0,
+    lives: 3,
+    keys: {},
+    gameRunning: false,
+    lastTime: performance.now()
+};
+
+// Initialize terrain (from working Test 6)
+for (let x = 0; x < canvas.width + 50; x += 10) {
+    gameState.terrain.push({
+        x: x,
+        height: 15 + Math.sin(x * 0.05) * 10
+    });
+}
+
+// Initialize enemies (from working Test 6)
+for (let i = 0; i < 5; i++) {
+    gameState.enemies.push({
+        x: 200 + i * 80,
+        y: 30 + Math.sin(i * 2) * 40,
+        width: 15,
+        height: 15,
+        speed: 0.5 + Math.random() * 1.5,
+        health: 3,
+        type: Math.floor(Math.random() * 3)
+    });
+}
+
+// Input handling
+document.addEventListener('keydown', (e) => {
+    gameState.keys[e.key.toLowerCase()] = true;
+    if (e.key === ' ') {
+        e.preventDefault();
+        fireBullet();
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    gameState.keys[e.key.toLowerCase()] = false;
+});
+
+// Touch controls
+function handleTouchStart(direction) {
+    switch(direction) {
+        case 'left': gameState.keys['arrowleft'] = true; break;
+        case 'right': gameState.keys['arrowright'] = true; break;
+        case 'up': gameState.keys['arrowup'] = true; break;
+        case 'down': gameState.keys['arrowdown'] = true; break;
+        case 'fire': fireBullet(); break;
+    }
+}
+
+function handleTouchEnd(direction) {
+    switch(direction) {
+        case 'left': gameState.keys['arrowleft'] = false; break;
+        case 'right': gameState.keys['arrowright'] = false; break;
+        case 'up': gameState.keys['arrowup'] = false; break;
+        case 'down': gameState.keys['arrowdown'] = false; break;
+    }
+}
+
+// Game functions
+function fireBullet() {
+    gameState.bullets.push({
+        x: gameState.player.x + gameState.player.width,
+        y: gameState.player.y + gameState.player.height / 2,
+        speed: 6,
+        damage: 1
+    });
+}
+
+function updatePlayer() {
+    // Movement
+    if (gameState.keys['arrowleft'] || gameState.keys['a']) {
+        gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed);
+    }
+    if (gameState.keys['arrowright'] || gameState.keys['d']) {
+        gameState.player.x = Math.min(canvas.width - gameState.player.width, gameState.player.x + gameState.player.speed);
+    }
+    if (gameState.keys['arrowup'] || gameState.keys['w']) {
+        gameState.player.y = Math.max(0, gameState.player.y - gameState.player.speed);
+    }
+    if (gameState.keys['arrowdown'] || gameState.keys['s']) {
+        gameState.player.y = Math.min(canvas.height - gameState.player.height, gameState.player.y + gameState.player.speed);
+    }
+}
+
+function updateEnemies() {
+    gameState.enemies.forEach((enemy, i) => {
+        enemy.x -= enemy.speed;
+        enemy.y += Math.sin(Date.now() * 0.001 + i) * 0.5;
+        
+        if (enemy.x < -enemy.width) {
+            enemy.x = canvas.width + 20;
+            enemy.y = 30 + Math.random() * 300;
+            enemy.health = 3;
+        }
+    });
+}
+
+function updateBullets() {
+    for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+        const bullet = gameState.bullets[i];
+        bullet.x += bullet.speed;
+        
+        if (bullet.x > canvas.width) {
+            gameState.bullets.splice(i, 1);
+            continue;
+        }
+        
+        // Collision with enemies
+        for (let j = 0; j < gameState.enemies.length; j++) {
+            const enemy = gameState.enemies[j];
+            if (bullet.x < enemy.x + enemy.width &&
+                bullet.x + 8 > enemy.x &&
+                bullet.y < enemy.y + enemy.height &&
+                bullet.y + 2 > enemy.y) {
+                
+                // Hit! Create particles
+                for (let p = 0; p < 5; p++) {
+                    gameState.particles.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height / 2,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 20,
+                        color: '#ffff00'
+                    });
+                }
+                
+                enemy.health--;
+                gameState.bullets.splice(i, 1);
+                gameState.score += 10;
+                
+                if (enemy.health <= 0) {
+                    enemy.x = canvas.width + Math.random() * 100;
+                    enemy.y = 30 + Math.random() * 300;
+                    enemy.health = 3;
+                    gameState.score += 50;
+                }
+                break;
+            }
+        }
+    }
+}
+
+function updateParticles() {
+    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+        const particle = gameState.particles[i];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.life--;
+        
+        if (particle.life <= 0) {
+            gameState.particles.splice(i, 1);
+        }
+    }
+}
+
+function updateTerrain() {
+    gameState.terrain.forEach(t => {
+        t.x -= 1;
+        if (t.x < -10) {
+            t.x = canvas.width;
+            t.height = 15 + Math.sin(Date.now() * 0.001) * 10;
+        }
+    });
+}
+
+// Render functions (using proven working patterns from Test 6)
+function render() {
+    // Background with scrolling effect
+    ctx.fillStyle = '#001100';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Scrolling starfield
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 20; i++) {
+        const x = ((Date.now() * 0.05 + i * 23) % canvas.width);
+        const y = (i * 37) % canvas.height;
+        ctx.fillRect(x, y, 1, 1);
+    }
+    
+    // Terrain with scrolling
+    ctx.fillStyle = '#003300';
+    gameState.terrain.forEach(t => {
+        ctx.fillRect(t.x, canvas.height - t.height, 10, t.height);
+    });
+    
+    // Player with detailed sprite
+    ctx.fillStyle = '#00ff00';
+    ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+    
+    // Player details
+    ctx.fillStyle = '#88ff88';
+    ctx.fillRect(gameState.player.x + 2, gameState.player.y + 2, 16, 11);
+    ctx.fillStyle = '#0088ff';
+    ctx.fillRect(gameState.player.x - 3, gameState.player.y + 6, 6, 3);
+    
+    // Enemies with different types
+    gameState.enemies.forEach((enemy, i) => {
+        switch (enemy.type) {
+            case 0: ctx.fillStyle = '#ff0000'; break;
+            case 1: ctx.fillStyle = '#ff8800'; break;
+            case 2: ctx.fillStyle = '#ff0088'; break;
+        }
+        
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        
+        // Enemy details
+        ctx.fillStyle = '#ffaaaa';
+        ctx.fillRect(enemy.x + 2, enemy.y + 2, enemy.width - 4, enemy.height - 4);
+    });
+    
+    // Bullets
+    ctx.fillStyle = '#ffff00';
+    gameState.bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x, bullet.y, 8, 2);
+    });
+    
+    // Particles
+    gameState.particles.forEach(particle => {
+        const alpha = particle.life / 20;
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(particle.x, particle.y, 2, 2);
+        ctx.globalAlpha = 1;
+    });
+    
+    // UI Elements
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '16px Courier New';
+    ctx.fillText(`Score: ${gameState.score}`, 10, 30);
+    ctx.fillText(`Health: ${gameState.player.health}`, 10, 50);
+    ctx.fillText(`Lives: ${gameState.lives}`, 10, 70);
+}
+
+// Main game loop (using proven working pattern from Test 6)
+function gameLoop(currentTime) {
+    if (!gameState.gameRunning) return;
+    
+    const deltaTime = currentTime - gameState.lastTime;
+    gameState.lastTime = currentTime;
+    
+    // Update game state
+    updatePlayer();
+    updateEnemies();
+    updateBullets();
+    updateParticles();
+    updateTerrain();
+    
+    // Render everything
+    render();
+    
+    // Update HUD
+    document.getElementById('score').textContent = gameState.score;
+    document.getElementById('lives').textContent = gameState.lives;
+    document.getElementById('health').textContent = gameState.player.health;
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// Initialize and start game
+function initGame() {
+    console.log('🎮 Initializing iPhone-compatible game engine...');
+    
+    // Test initial render
+    ctx.fillStyle = '#002200';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#00ff00';
+    ctx.fillText('BOLAMIGA - LOADING...', 50, 50);
+    
+    console.log('✅ Initial render test complete');
+    
+    // Start game after short delay
+    setTimeout(() => {
+        gameState.gameRunning = true;
+        gameLoop(performance.now());
+        console.log('🚀 Game started!');
+    }, 1000);
+}
+
+// Start when page loads
+window.addEventListener('load', initGame);
+
+console.log('📱 iPhone-compatible Bolamiga game engine loaded');
+</script>
+
+<style>
+.touch-btn {
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 255, 0, 0.2);
+    border: 1px solid #00ff00;
+    border-radius: 8px;
+    color: #00ff00;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.touch-btn:active {
+    background: rgba(0, 255, 0, 0.4);
+    transform: scale(0.95);
+}
+
+.fire-btn {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 0, 0.2);
+    border-color: #ffff00;
+    color: #ffff00;
+}
+
+.fire-btn:active {
+    background: rgba(255, 255, 0, 0.4);
+}
+</style>
+{% endblock %}

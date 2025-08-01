@@ -9,6 +9,10 @@ def index():
 
 @app.route('/game')
 def game():
+    return render_template('game-iphone-fixed.html')
+
+@app.route('/game-original')
+def game_original():
     return render_template('game.html')
 
 @app.route('/debug')
@@ -41,6 +45,10 @@ def comparison():
 @app.route('/canvas-test')
 def canvas_test():
     return render_template('canvas-feature-test.html')
+
+@app.route('/game-fixed')
+def game_fixed():
+    return render_template('game-iphone-fixed.html')
 
 if __name__ == '__main__':
     # Port management
