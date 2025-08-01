@@ -43,6 +43,27 @@
     <div class="menu-item" onclick="returnToMenu()">🏠 MAIN MENU</div>
 </div>
 
+<!-- Mobile Touch Controls -->
+<div id="touch-controls" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 8px; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 80px;">
+        <!-- Movement Controls (Left Side) -->
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <button id="touch-up" style="width: 60px; height: 30px; margin: 2px; background: rgba(0, 255, 65, 0.3); border: 2px solid rgba(0, 255, 65, 0.5); border-radius: 8px; color: white; font-size: 18px; font-weight: bold;">▲</button>
+            <div style="display: flex;">
+                <button id="touch-left" style="width: 30px; height: 30px; margin: 2px; background: rgba(0, 255, 65, 0.3); border: 2px solid rgba(0, 255, 65, 0.5); border-radius: 8px; color: white; font-size: 18px; font-weight: bold;">◀</button>
+                <button id="touch-right" style="width: 30px; height: 30px; margin: 2px; background: rgba(0, 255, 65, 0.3); border: 2px solid rgba(0, 255, 65, 0.5); border-radius: 8px; color: white; font-size: 18px; font-weight: bold;">▶</button>
+            </div>
+            <button id="touch-down" style="width: 60px; height: 30px; margin: 2px; background: rgba(0, 255, 65, 0.3); border: 2px solid rgba(0, 255, 65, 0.5); border-radius: 8px; color: white; font-size: 18px; font-weight: bold;">▼</button>
+        </div>
+        
+        <!-- Action Controls (Right Side) -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <button id="touch-fire" style="width: 80px; height: 40px; background: rgba(255, 255, 0, 0.3); border: 2px solid rgba(255, 255, 0, 0.5); border-radius: 12px; color: white; font-size: 14px; font-weight: bold;">FIRE</button>
+            <button id="touch-pause" style="width: 60px; height: 30px; background: rgba(255, 100, 100, 0.3); border: 2px solid rgba(255, 100, 100, 0.5); border-radius: 8px; color: white; font-size: 12px; font-weight: bold;">PAUSE</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -121,6 +142,12 @@ const PlatformManager = {
 const currentPlatformConfig = PlatformManager.getCurrentConfig();
 console.log('Platform detected:', currentPlatformConfig.platform);
 console.log('Using config:', currentPlatformConfig);
+
+// Show touch controls on mobile devices
+if (currentPlatformConfig.platform.isMobile) {
+    document.getElementById('touch-controls').style.display = 'block';
+    console.log('📱 Touch controls enabled for mobile device');
+}
 
 // iPhone Chrome Critical Fix: Complete canvas rendering solution
 if (currentPlatformConfig.platform.isIPhone) {
@@ -292,10 +319,23 @@ let keys = {};
 let lastFireTime = 0;
 const fireRate = 150; // milliseconds between shots
 
-// Game timing
+// Game timing with iPhone optimization
 let lastTime = 0;
 let enemySpawnTimer = 0;
 const enemySpawnRate = 2000; // milliseconds
+
+// iPhone Performance Configuration
+const iPhoneConfig = {
+    targetFPS: currentPlatformConfig.platform.isIPhone ? 24 : 60,
+    maxCanvasSize: { width: 800, height: 600 },
+    reducedEffects: currentPlatformConfig.platform.isIPhone,
+    maxEnemies: currentPlatformConfig.platform.isIPhone ? 3 : 8,
+    maxParticles: currentPlatformConfig.platform.isIPhone ? 20 : 100
+};
+
+// Frame rate limiting for iPhone
+let frameInterval = 1000 / iPhoneConfig.targetFPS;
+let lastFrameTime = 0;
 
 // Screen shake effect for terrain impacts
 let screenShakeIntensity = 0;
@@ -323,6 +363,15 @@ let touchControls = {
     moveY: 0,
     firing: false,
     lastTouch: 0
+};
+
+// Enhanced touch control system with button support
+let touchButtons = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    fire: false
 };
 
 // Touch event handlers
@@ -369,6 +418,61 @@ document.addEventListener('touchstart', (e) => {
 document.addEventListener('touchmove', (e) => {
     if (e.target === canvas) e.preventDefault();
 }, { passive: false });
+
+// Touch button event handlers
+function setupTouchButtons() {
+    const buttons = [
+        { id: 'touch-up', key: 'up' },
+        { id: 'touch-down', key: 'down' },
+        { id: 'touch-left', key: 'left' },
+        { id: 'touch-right', key: 'right' },
+        { id: 'touch-fire', key: 'fire' },
+        { id: 'touch-pause', key: 'pause' }
+    ];
+    
+    buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            // Touch start
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (button.key === 'pause') {
+                    togglePause();
+                } else {
+                    touchButtons[button.key] = true;
+                    if (button.key === 'fire') {
+                        touchControls.firing = true;
+                    }
+                }
+                element.style.background = button.key === 'fire' ? 
+                    'rgba(255, 255, 0, 0.6)' : 'rgba(0, 255, 65, 0.6)';
+            }, { passive: false });
+            
+            // Touch end
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (button.key !== 'pause') {
+                    touchButtons[button.key] = false;
+                    if (button.key === 'fire') {
+                        touchControls.firing = false;
+                    }
+                }
+                element.style.background = button.key === 'fire' ? 
+                    'rgba(255, 255, 0, 0.3)' : 'rgba(0, 255, 65, 0.3)';
+            }, { passive: false });
+            
+            // Prevent context menu
+            element.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+        }
+    });
+}
+
+// Initialize touch buttons when mobile controls are shown
+if (currentPlatformConfig.platform.isMobile) {
+    setupTouchButtons();
+}
 
 function togglePause() {
     gameState.paused = !gameState.paused;
@@ -569,8 +673,11 @@ class Particle {
 }
 
 function createHitEffect(x, y) {
-    for (let i = 0; i < 8; i++) {
-        const angle = (Math.PI * 2 * i) / 8;
+    // Reduce particle count on iPhone for performance
+    const particleCount = iPhoneConfig.reducedEffects ? 4 : 8;
+    for (let i = 0; i < particleCount; i++) {
+        if (particles.length >= iPhoneConfig.maxParticles) break;
+        const angle = (Math.PI * 2 * i) / particleCount;
         const speed = 100 + Math.random() * 50;
         particles.push(new Particle(
             x, y,
@@ -648,11 +755,11 @@ function handleInput(deltaTime) {
     const originalX = player.x;
     const originalY = player.y;
     
-    // Combine keyboard and touch input
-    const moveLeft = keys['ArrowLeft'] || keys['KeyA'] || touchControls.moveX < 0;
-    const moveRight = keys['ArrowRight'] || keys['KeyD'] || touchControls.moveX > 0;
-    const moveUp = keys['ArrowUp'] || keys['KeyW'] || touchControls.moveY < 0;
-    const moveDown = keys['ArrowDown'] || keys['KeyS'] || touchControls.moveY > 0;
+    // Combine keyboard, touch gesture, and touch button input
+    const moveLeft = keys['ArrowLeft'] || keys['KeyA'] || touchControls.moveX < 0 || touchButtons.left;
+    const moveRight = keys['ArrowRight'] || keys['KeyD'] || touchControls.moveX > 0 || touchButtons.right;
+    const moveUp = keys['ArrowUp'] || keys['KeyW'] || touchControls.moveY < 0 || touchButtons.up;
+    const moveDown = keys['ArrowDown'] || keys['KeyS'] || touchControls.moveY > 0 || touchButtons.down;
     
     // Player movement with terrain collision
     if (moveLeft) {
@@ -727,8 +834,8 @@ function handleInput(deltaTime) {
         }
     }
     
-    // Player firing (keyboard or touch)
-    if ((keys['Space'] || touchControls.firing) && Date.now() - lastFireTime > fireRate) {
+    // Player firing (keyboard, touch gesture, or touch button)
+    if ((keys['Space'] || touchControls.firing || touchButtons.fire) && Date.now() - lastFireTime > fireRate) {
         bullets.push(new Bullet(player.x + player.width, player.y + player.height / 2, 400, 0, true));
         lastFireTime = Date.now();
         playLaserSound();
@@ -736,13 +843,18 @@ function handleInput(deltaTime) {
 }
 
 function spawnEnemy() {
+    // Limit enemy count on iPhone for performance
+    if (enemies.length >= iPhoneConfig.maxEnemies) {
+        return;
+    }
+    
     enemies.push(new Enemy(
         canvas.width + 50,
         Math.random() * (canvas.height - 50) + 25
     ));
     
-    // Switch to combat music when enemies appear
-    if (chiptunePlayer && chiptunePlayer.currentTrack !== 'combat' && enemies.length > 0) {
+    // Switch to combat music when enemies appear (not on iPhone to save resources)
+    if (chiptunePlayer && !iPhoneConfig.reducedEffects && chiptunePlayer.currentTrack !== 'combat' && enemies.length > 0) {
         chiptunePlayer.stopMusic();
         setTimeout(() => {
             chiptunePlayer.playTrack('combat');
@@ -880,8 +992,10 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-    // iPhone: Use EXACT working approach from minimal game
+    // iPhone: Use EXACT working approach from minimal game - FIXED VERSION
     if (currentPlatformConfig.platform.isIPhone) {
+        console.log('🍎 iPhone rendering path - using minimal approach');
+        
         // Clear with same background as working minimal game
         ctx.fillStyle = '#000022';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -890,28 +1004,33 @@ function drawGame() {
         if (player) {
             ctx.fillStyle = '#00FF00'; // Same green that works
             ctx.fillRect(player.x, player.y, player.width, player.height);
+            console.log(`🟢 Player drawn at (${player.x}, ${player.y})`);
         }
         
         // Draw enemies - EXACTLY like working minimal game
-        enemies.forEach(enemy => {
+        enemies.forEach((enemy, index) => {
             ctx.fillStyle = '#FF0000'; // Same red that works
             ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            console.log(`🔴 Enemy ${index} drawn at (${enemy.x}, ${enemy.y})`);
         });
         
         // Draw bullets - EXACTLY like working minimal game
-        bullets.forEach(bullet => {
+        bullets.forEach((bullet, index) => {
             ctx.fillStyle = '#FFFF00'; // Same yellow that works
             ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            console.log(`🟡 Bullet ${index} drawn at (${bullet.x}, ${bullet.y})`);
         });
         
         // Add status text like working minimal game
         ctx.fillStyle = '#FFFFFF';
         ctx.font = '20px Arial';
-        ctx.fillText('BOLAMIGA', 300, 50);
+        ctx.fillText('BOLAMIGA - FIXED', 300, 50);
         ctx.font = '16px Arial';
         ctx.fillText(`Score: ${gameState.score}`, 300, 80);
         ctx.fillText(`Lives: ${gameState.lives}`, 300, 100);
+        ctx.fillText(`Canvas: ${canvas.width}x${canvas.height}`, 300, 120);
         
+        console.log('🍎 iPhone frame complete - all elements drawn');
         return; // Exit early - NO complex systems for iPhone
     }
     
@@ -1763,8 +1882,17 @@ class AmigaChiptunePlayer {
 // Global music player instance
 let chiptunePlayer = null;
 
-// Main game loop with iPhone Chrome optimizations
+// Main game loop with iPhone Chrome optimizations and frame rate limiting
 function gameLoop(currentTime) {
+    // iPhone frame rate limiting for better performance
+    if (currentPlatformConfig.platform.isIPhone) {
+        if (currentTime - lastFrameTime < frameInterval) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        lastFrameTime = currentTime;
+    }
+    
     const deltaTime = currentTime - lastTime;
     lastTime = currentTime;
     

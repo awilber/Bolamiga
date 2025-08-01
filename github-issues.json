@@ -1,0 +1,31 @@
+[
+  {
+    "title": "\ud83d\udea8 CRITICAL: iPhone Canvas Rendering Completely Broken",
+    "body": "## Problem\niPhone users see only a dark green background instead of the game on both Safari and Chrome.\n\n## Evidence  \n- `/debug` endpoint shows iPhone Canvas 2D context works perfectly\n- `/minimal` endpoint demonstrates working iPhone game rendering  \n- `/game` endpoint fails despite using identical approach\n- `/comparison` endpoint provides side-by-side evidence\n\n## Root Cause\nComplex game initialization in main game interferes with iPhone Canvas rendering, while minimal approach works flawlessly.\n\n## Impact\n- **Severity**: Critical\n- **Affected Users**: All iPhone users (Safari + Chrome)  \n- **Business Impact**: Complete game inaccessibility on mobile platform\n\n## Solution\nReplace main game iPhone rendering pipeline with proven minimal game approach:\n\n```javascript\n// iPhone: Use EXACT working approach from minimal game\nif (currentPlatformConfig.platform.isIPhone) {\n    ctx.fillStyle = '#000022';\n    ctx.fillRect(0, 0, canvas.width, canvas.height);\n    \n    if (player) {\n        ctx.fillStyle = '#00FF00';\n        ctx.fillRect(player.x, player.y, player.width, player.height);\n    }\n    return; // Exit early - NO complex systems for iPhone\n}\n```\n\n## Testing URLs\n- Working: http://98.81.133.84:5030/minimal\n- Broken: http://98.81.133.84:5030/game  \n- Debug: http://98.81.133.84:5030/comparison\n\n## Acceptance Criteria\n- [ ] iPhone shows moving game elements (green player, red enemies, yellow bullets)\n- [ ] Game runs at stable frame rate on iPhone\n- [ ] Touch controls work for iPhone users\n- [ ] No dark green screen or empty canvas issues",
+    "labels": [
+      "bug",
+      "critical",
+      "mobile",
+      "iPhone"
+    ]
+  },
+  {
+    "title": "\ud83d\udcf1 Mobile UX: Missing iPhone Safe Area and Touch Optimization",
+    "body": "## Problem\nBolamiga lacks proper mobile optimization for iPhone devices.\n\n## Missing Features\n1. **Safe Area Support**: No CSS safe-area-inset for iPhone notch/home indicator\n2. **Viewport Meta Tag**: Missing proper mobile viewport configuration\n3. **Touch Controls**: No touch-friendly game controls\n4. **Responsive Design**: Fixed desktop layout doesn't adapt to mobile screens\n\n## Impact\n- **Severity**: Major\n- **Affected Users**: iPhone and mobile users\n- **UX Impact**: Poor mobile experience, unusable interface\n\n## Implementation\nAdd mobile-first responsive design:\n\n```html\n<!-- Viewport meta tag -->\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n\n<!-- Safe area CSS -->\n.game-container {\n    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);\n}\n\n<!-- Touch controls -->\n.touch-controls {\n    display: none;\n}\n\n@media (pointer: coarse) {\n    .touch-controls {\n        display: block;\n    }\n}\n```\n\n## Acceptance Criteria\n- [ ] Game respects iPhone safe areas (notch, home indicator)\n- [ ] Touch controls appear on mobile devices\n- [ ] Proper viewport scaling on all mobile devices\n- [ ] Responsive layout adapts to mobile screen sizes",
+    "labels": [
+      "enhancement",
+      "mobile",
+      "UX"
+    ]
+  },
+  {
+    "title": "\u26a1 Performance: iPhone-Specific Optimization Needed",
+    "body": "## Problem\nGame performance on iPhone is suboptimal due to hardware limitations not being addressed.\n\n## Performance Issues\n1. **Frame Rate**: Targeting 60 FPS on iPhone (should be 24-30 FPS)\n2. **Canvas Size**: Using desktop canvas size (should be limited for iPhone)\n3. **Memory Usage**: No memory management for iOS Safari limitations\n4. **Audio Restrictions**: Not handling iOS autoplay restrictions\n\n## iPhone Limitations\n- iOS Safari: Canvas limited to 2048x2048 pixels\n- iOS Safari: Very limited memory (64MB recommended)\n- iOS: Audio requires user interaction\n- iPhone Chrome: Similar Canvas/memory constraints\n\n## Implementation\nAdd iPhone-specific performance configuration:\n\n```javascript\nconst iPhoneConfig = {\n    maxCanvasSize: { width: 400, height: 300 },\n    targetFPS: 24,\n    maxMemoryUsage: 64, // MB\n    audioRequiresInteraction: true,\n    reducedEffects: true\n};\n```\n\n## Acceptance Criteria\n- [ ] Stable 24+ FPS on iPhone devices\n- [ ] Canvas size appropriate for iPhone memory limits\n- [ ] Audio works after user interaction\n- [ ] No memory-related crashes on extended play",
+    "labels": [
+      "enhancement",
+      "mobile",
+      "UX",
+      "performance"
+    ]
+  }
+]
