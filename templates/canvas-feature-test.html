@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>iPhone Canvas Feature Test - Bolamiga</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #001100;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        
+        .test-container {
+            margin-bottom: 20px;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .test-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00ffff;
+        }
+        
+        .test-result {
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .warning { color: #ffff00; }
+        
+        canvas {
+            border: 1px solid #00ff00;
+            display: block;
+            margin: 10px 0;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .controls {
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #002200;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px 10px;
+            margin: 2px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #004400;
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 5px;
+            font-size: 10px;
+            max-width: 150px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <div>iPhone Canvas Feature Test</div>
+        <div id="deviceInfo"></div>
+        <div id="canvasInfo"></div>
+    </div>
+
+    <!-- Test 1: Basic Canvas -->
+    <div class="test-container">
+        <div class="test-title">Test 1: Basic Canvas Context</div>
+        <canvas id="test1" width="300" height="150"></canvas>
+        <div class="test-result" id="result1"></div>
+    </div>
+
+    <!-- Test 2: Simple Shapes -->
+    <div class="test-container">
+        <div class="test-title">Test 2: Simple Shape Rendering</div>
+        <canvas id="test2" width="300" height="150"></canvas>
+        <div class="test-result" id="result2"></div>
+    </div>
+
+    <!-- Test 3: Multiple Objects -->
+    <div class="test-container">
+        <div class="test-title">Test 3: Multiple Game Objects</div>
+        <canvas id="test3" width="300" height="150"></canvas>
+        <div class="test-result" id="result3"></div>
+    </div>
+
+    <!-- Test 4: Animation Loop -->
+    <div class="test-container">
+        <div class="test-title">Test 4: Animation Loop</div>
+        <canvas id="test4" width="300" height="150"></canvas>
+        <div class="test-result" id="result4"></div>
+        <div class="controls">
+            <button onclick="startTest4()">Start Animation</button>
+            <button onclick="stopTest4()">Stop Animation</button>
+        </div>
+    </div>
+
+    <!-- Test 5: Complex Scene -->
+    <div class="test-container">
+        <div class="test-title">Test 5: Complex Scene (Desktop Game Elements)</div>
+        <canvas id="test5" width="300" height="200"></canvas>
+        <div class="test-result" id="result5"></div>
+        <div class="controls">
+            <button onclick="startTest5()">Start Complex Scene</button>
+            <button onclick="stopTest5()">Stop Scene</button>
+        </div>
+    </div>
+
+    <!-- Test 6: Full Game Engine Test -->
+    <div class="test-container">
+        <div class="test-title">Test 6: Full Game Engine Simulation</div>
+        <canvas id="test6" width="300" height="200"></canvas>
+        <div class="test-result" id="result6"></div>
+        <div class="controls">
+            <button onclick="startTest6()">Start Game Engine</button>
+            <button onclick="stopTest6()">Stop Engine</button>
+        </div>
+    </div>
+
+    <script>
+        // Device and environment detection
+        const deviceInfo = {
+            userAgent: navigator.userAgent,
+            isIPhone: /iPhone/.test(navigator.userAgent),
+            isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+            isChrome: /Chrome/.test(navigator.userAgent),
+            isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+            screenWidth: screen.width,
+            screenHeight: screen.height,
+            windowWidth: window.innerWidth,
+            windowHeight: window.innerHeight,
+            pixelRatio: window.devicePixelRatio || 1
+        };
+
+        document.getElementById('deviceInfo').innerHTML = 
+            `${deviceInfo.isIPhone ? 'iPhone' : 'Other'}<br>
+             ${deviceInfo.isChrome ? 'Chrome' : deviceInfo.isSafari ? 'Safari' : 'Other'}<br>
+             ${deviceInfo.windowWidth}x${deviceInfo.windowHeight}`;
+
+        // Test results tracking
+        let testResults = {};
+        let animationFrames = {};
+
+        function logResult(testNum, success, message) {
+            testResults[testNum] = { success, message };
+            const resultElement = document.getElementById(`result${testNum}`);
+            resultElement.className = `test-result ${success ? 'success' : 'error'}`;
+            resultElement.textContent = `${success ? '✅' : '❌'} ${message}`;
+        }
+
+        // Test 1: Basic Canvas Context
+        function runTest1() {
+            try {
+                const canvas = document.getElementById('test1');
+                const ctx = canvas.getContext('2d');
+                
+                if (!ctx) {
+                    logResult(1, false, 'Failed to get 2D context');
+                    return;
+                }
+
+                // Basic green background
+                ctx.fillStyle = '#002200';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                logResult(1, true, 'Basic canvas context works');
+            } catch (error) {
+                logResult(1, false, `Error: ${error.message}`);
+            }
+        }
+
+        // Test 2: Simple Shapes (like /minimal)
+        function runTest2() {
+            try {
+                const canvas = document.getElementById('test2');
+                const ctx = canvas.getContext('2d');
+                
+                // Background
+                ctx.fillStyle = '#002200';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Player (green box)
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(50, 100, 20, 15);
+                
+                // Bullet (yellow)
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(100, 107, 8, 2);
+                
+                // Enemy (red)
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(200, 95, 15, 20);
+                
+                logResult(2, true, 'Simple shapes render correctly');
+            } catch (error) {
+                logResult(2, false, `Error: ${error.message}`);
+            }
+        }
+
+        // Test 3: Multiple Objects
+        function runTest3() {
+            try {
+                const canvas = document.getElementById('test3');
+                const ctx = canvas.getContext('2d');
+                
+                // Background
+                ctx.fillStyle = '#002200';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Multiple enemies
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(50 + i * 40, 50 + Math.sin(i) * 20, 15, 15);
+                }
+                
+                // Player with trail
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(150, 120, 20, 15);
+                
+                // Multiple bullets
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fillRect(170 + i * 15, 125, 8, 2);
+                }
+                
+                logResult(3, true, 'Multiple objects render correctly');
+            } catch (error) {
+                logResult(3, false, `Error: ${error.message}`);
+            }
+        }
+
+        // Test 4: Animation Loop
+        let test4Running = false;
+        function startTest4() {
+            if (test4Running) return;
+            test4Running = true;
+            
+            const canvas = document.getElementById('test4');
+            const ctx = canvas.getContext('2d');
+            let frame = 0;
+            
+            function animate() {
+                if (!test4Running) return;
+                
+                try {
+                    // Background
+                    ctx.fillStyle = '#002200';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Moving object
+                    const x = (frame * 2) % (canvas.width - 20);
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(x, 75, 20, 15);
+                    
+                    frame++;
+                    
+                    animationFrames['test4'] = requestAnimationFrame(animate);
+                    
+                    if (frame === 1) {
+                        logResult(4, true, 'Animation loop started successfully');
+                    }
+                } catch (error) {
+                    logResult(4, false, `Animation error: ${error.message}`);
+                    test4Running = false;
+                }
+            }
+            
+            animate();
+        }
+        
+        function stopTest4() {
+            test4Running = false;
+            if (animationFrames['test4']) {
+                cancelAnimationFrame(animationFrames['test4']);
+            }
+        }
+
+        // Test 5: Complex Scene (Desktop-like)
+        let test5Running = false;
+        function startTest5() {
+            if (test5Running) return;
+            test5Running = true;
+            
+            const canvas = document.getElementById('test5');
+            const ctx = canvas.getContext('2d');
+            let frame = 0;
+            
+            // Game objects
+            const player = { x: 50, y: 150, width: 20, height: 15 };
+            const enemies = [];
+            const bullets = [];
+            const particles = [];
+            
+            // Initialize enemies
+            for (let i = 0; i < 3; i++) {
+                enemies.push({
+                    x: 200 + i * 50,
+                    y: 50 + Math.sin(i) * 30,
+                    width: 15,
+                    height: 15,
+                    speed: 1 + Math.random()
+                });
+            }
+            
+            function complexAnimate() {
+                if (!test5Running) return;
+                
+                try {
+                    // Background with gradient
+                    ctx.fillStyle = '#001100';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Add some "terrain"
+                    ctx.fillStyle = '#003300';
+                    for (let x = 0; x < canvas.width; x += 20) {
+                        const height = 10 + Math.sin(x * 0.1 + frame * 0.1) * 5;
+                        ctx.fillRect(x, canvas.height - height, 20, height);
+                    }
+                    
+                    // Player
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(player.x, player.y, player.width, player.height);
+                    
+                    // Player engine trail
+                    ctx.fillStyle = '#0088ff';
+                    ctx.fillRect(player.x - 5, player.y + 6, 5, 3);
+                    
+                    // Enemies with movement
+                    enemies.forEach((enemy, i) => {
+                        enemy.x -= enemy.speed;
+                        if (enemy.x < -enemy.width) {
+                            enemy.x = canvas.width;
+                            enemy.y = 50 + Math.sin(frame * 0.1 + i) * 50;
+                        }
+                        
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    });
+                    
+                    // Add bullets periodically
+                    if (frame % 20 === 0) {
+                        bullets.push({
+                            x: player.x + player.width,
+                            y: player.y + player.height / 2,
+                            speed: 3
+                        });
+                    }
+                    
+                    // Update and draw bullets
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const bullet = bullets[i];
+                        bullet.x += bullet.speed;
+                        
+                        if (bullet.x > canvas.width) {
+                            bullets.splice(i, 1);
+                            continue;
+                        }
+                        
+                        ctx.fillStyle = '#ffff00';
+                        ctx.fillRect(bullet.x, bullet.y, 8, 2);
+                    }
+                    
+                    // Add particles
+                    if (frame % 10 === 0) {
+                        particles.push({
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            life: 30,
+                            speed: Math.random() * 2
+                        });
+                    }
+                    
+                    // Update and draw particles
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        const particle = particles[i];
+                        particle.life--;
+                        particle.x += particle.speed;
+                        
+                        if (particle.life <= 0) {
+                            particles.splice(i, 1);
+                            continue;
+                        }
+                        
+                        const alpha = particle.life / 30;
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                        ctx.fillRect(particle.x, particle.y, 2, 2);
+                    }
+                    
+                    frame++;
+                    animationFrames['test5'] = requestAnimationFrame(complexAnimate);
+                    
+                    if (frame === 1) {
+                        logResult(5, true, 'Complex scene renders successfully');
+                    }
+                } catch (error) {
+                    logResult(5, false, `Complex scene error: ${error.message}`);
+                    test5Running = false;
+                }
+            }
+            
+            complexAnimate();
+        }
+        
+        function stopTest5() {
+            test5Running = false;
+            if (animationFrames['test5']) {
+                cancelAnimationFrame(animationFrames['test5']);
+            }
+        }
+
+        // Test 6: Full Game Engine Simulation
+        let test6Running = false;
+        function startTest6() {
+            if (test6Running) return;
+            test6Running = true;
+            
+            const canvas = document.getElementById('test6');
+            const ctx = canvas.getContext('2d');
+            let frame = 0;
+            
+            // More complex game state
+            const gameState = {
+                player: { x: 50, y: 150, width: 20, height: 15, health: 100 },
+                enemies: [],
+                bullets: [],
+                particles: [],
+                terrain: [],
+                score: 0,
+                lastTime: performance.now()
+            };
+            
+            // Initialize terrain
+            for (let x = 0; x < canvas.width + 50; x += 10) {
+                gameState.terrain.push({
+                    x: x,
+                    height: 15 + Math.sin(x * 0.05) * 10
+                });
+            }
+            
+            // Initialize enemies
+            for (let i = 0; i < 5; i++) {
+                gameState.enemies.push({
+                    x: 200 + i * 80,
+                    y: 30 + Math.sin(i * 2) * 40,
+                    width: 15,
+                    height: 15,
+                    speed: 0.5 + Math.random() * 1.5,
+                    health: 3,
+                    type: Math.floor(Math.random() * 3)
+                });
+            }
+            
+            function fullGameAnimate(currentTime) {
+                if (!test6Running) return;
+                
+                try {
+                    const deltaTime = currentTime - gameState.lastTime;
+                    gameState.lastTime = currentTime;
+                    
+                    // Background with scrolling effect
+                    ctx.fillStyle = '#001100';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Scrolling starfield
+                    ctx.fillStyle = '#ffffff';
+                    for (let i = 0; i < 20; i++) {
+                        const x = ((frame * 0.5 + i * 23) % canvas.width);
+                        const y = (i * 37) % canvas.height;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                    
+                    // Terrain with scrolling
+                    ctx.fillStyle = '#003300';
+                    gameState.terrain.forEach(t => {
+                        t.x -= 1;
+                        if (t.x < -10) {
+                            t.x = canvas.width;
+                            t.height = 15 + Math.sin(frame * 0.1) * 10;
+                        }
+                        ctx.fillRect(t.x, canvas.height - t.height, 10, t.height);
+                    });
+                    
+                    // Player with detailed sprite
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+                    
+                    // Player details
+                    ctx.fillStyle = '#88ff88';
+                    ctx.fillRect(gameState.player.x + 2, gameState.player.y + 2, 16, 11);
+                    ctx.fillStyle = '#0088ff';
+                    ctx.fillRect(gameState.player.x - 3, gameState.player.y + 6, 6, 3);
+                    
+                    // Enemies with AI behavior
+                    gameState.enemies.forEach((enemy, i) => {
+                        enemy.x -= enemy.speed;
+                        enemy.y += Math.sin(frame * 0.1 + i) * 0.5;
+                        
+                        if (enemy.x < -enemy.width) {
+                            enemy.x = canvas.width + 20;
+                            enemy.y = 30 + Math.random() * 100;
+                            enemy.health = 3;
+                        }
+                        
+                        // Different enemy types
+                        switch (enemy.type) {
+                            case 0:
+                                ctx.fillStyle = '#ff0000';
+                                break;
+                            case 1:
+                                ctx.fillStyle = '#ff8800';
+                                break;
+                            case 2:
+                                ctx.fillStyle = '#ff0088';
+                                break;
+                        }
+                        
+                        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                        
+                        // Enemy details
+                        ctx.fillStyle = '#ffaaaa';
+                        ctx.fillRect(enemy.x + 2, enemy.y + 2, enemy.width - 4, enemy.height - 4);
+                    });
+                    
+                    // Auto-fire bullets
+                    if (frame % 15 === 0) {
+                        gameState.bullets.push({
+                            x: gameState.player.x + gameState.player.width,
+                            y: gameState.player.y + gameState.player.height / 2,
+                            speed: 4,
+                            damage: 1
+                        });
+                    }
+                    
+                    // Update bullets with collision
+                    for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                        const bullet = gameState.bullets[i];
+                        bullet.x += bullet.speed;
+                        
+                        if (bullet.x > canvas.width) {
+                            gameState.bullets.splice(i, 1);
+                            continue;
+                        }
+                        
+                        // Collision with enemies
+                        for (let j = 0; j < gameState.enemies.length; j++) {
+                            const enemy = gameState.enemies[j];
+                            if (bullet.x < enemy.x + enemy.width &&
+                                bullet.x + 8 > enemy.x &&
+                                bullet.y < enemy.y + enemy.height &&
+                                bullet.y + 2 > enemy.y) {
+                                
+                                // Hit! Create particles
+                                for (let p = 0; p < 5; p++) {
+                                    gameState.particles.push({
+                                        x: enemy.x + enemy.width / 2,
+                                        y: enemy.y + enemy.height / 2,
+                                        vx: (Math.random() - 0.5) * 4,
+                                        vy: (Math.random() - 0.5) * 4,
+                                        life: 20,
+                                        color: '#ffff00'
+                                    });
+                                }
+                                
+                                enemy.health--;
+                                gameState.bullets.splice(i, 1);
+                                gameState.score += 10;
+                                
+                                if (enemy.health <= 0) {
+                                    enemy.x = canvas.width + Math.random() * 100;
+                                    enemy.y = 30 + Math.random() * 100;
+                                    enemy.health = 3;
+                                    gameState.score += 50;
+                                }
+                                break;
+                            }
+                        }
+                        
+                        if (i < gameState.bullets.length) {
+                            ctx.fillStyle = '#ffff00';
+                            ctx.fillRect(bullet.x, bullet.y, 8, 2);
+                        }
+                    }
+                    
+                    // Update particles
+                    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                        const particle = gameState.particles[i];
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        particle.life--;
+                        
+                        if (particle.life <= 0) {
+                            gameState.particles.splice(i, 1);
+                            continue;
+                        }
+                        
+                        const alpha = particle.life / 20;
+                        ctx.fillStyle = particle.color;
+                        ctx.globalAlpha = alpha;
+                        ctx.fillRect(particle.x, particle.y, 2, 2);
+                        ctx.globalAlpha = 1;
+                    }
+                    
+                    // UI Elements
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '12px Courier New';
+                    ctx.fillText(`Score: ${gameState.score}`, 5, 15);
+                    ctx.fillText(`Health: ${gameState.player.health}`, 5, 30);
+                    ctx.fillText(`FPS: ${Math.round(1000/deltaTime)}`, 5, 45);
+                    
+                    frame++;
+                    animationFrames['test6'] = requestAnimationFrame(fullGameAnimate);
+                    
+                    if (frame === 1) {
+                        logResult(6, true, 'Full game engine simulation running');
+                    }
+                } catch (error) {
+                    logResult(6, false, `Game engine error: ${error.message}`);
+                    test6Running = false;
+                }
+            }
+            
+            fullGameAnimate(performance.now());
+        }
+        
+        function stopTest6() {
+            test6Running = false;
+            if (animationFrames['test6']) {
+                cancelAnimationFrame(animationFrames['test6']);
+            }
+        }
+
+        // Run initial tests
+        window.onload = function() {
+            setTimeout(() => {
+                runTest1();
+                setTimeout(() => runTest2(), 100);
+                setTimeout(() => runTest3(), 200);
+            }, 100);
+            
+            document.getElementById('canvasInfo').innerHTML = 
+                `Tests: ${Object.keys(testResults).length}<br>
+                 Ready for progressive testing`;
+        };
+    </script>
+</body>
+</html>

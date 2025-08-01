@@ -38,6 +38,10 @@ def minimal_game():
 def comparison():
     return render_template('comparison.html')
 
+@app.route('/canvas-test')
+def canvas_test():
+    return render_template('canvas-feature-test.html')
+
 if __name__ == '__main__':
     # Port management
     port = int(os.environ.get('PORT', 5030))
