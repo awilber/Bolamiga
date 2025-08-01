@@ -9,7 +9,7 @@ def index():
 
 @app.route('/game')
 def game():
-    return render_template('game-iphone-fixed.html')
+    return render_template('game-mobile-controls-v2.html')
 
 @app.route('/game-original')
 def game_original():
@@ -49,6 +49,10 @@ def canvas_test():
 @app.route('/game-fixed')
 def game_fixed():
     return render_template('game-iphone-fixed.html')
+
+@app.route('/game-v2')
+def game_v2():
+    return render_template('game-mobile-controls-v2.html')
 
 if __name__ == '__main__':
     # Port management

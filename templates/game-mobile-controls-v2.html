@@ -1,0 +1,712 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="gameContainer" class="game-container">
+    <canvas id="gameCanvas" width="800" height="600" style="background: #002200;"></canvas>
+</div>
+
+<!-- Professional Dark Theme HUD -->
+<div class="game-hud">
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">SCORE:</span> 
+        <span id="score" style="color: var(--color-retro-primary); font-weight: 600;">0</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">LIVES:</span> 
+        <span id="lives" style="color: var(--color-retro-success); font-weight: 600;">3</span>
+    </div>
+    <div class="hud-item">
+        <span style="color: var(--color-text-secondary);">WEAPON:</span> 
+        <span id="weapon" style="color: var(--color-retro-secondary); font-weight: 600;">PULSE</span>
+    </div>
+    <div class="hud-item" id="health-display">
+        <span style="color: var(--color-text-secondary);">HEALTH:</span> 
+        <span id="health" style="color: var(--color-retro-success); font-weight: 600;">100</span>
+    </div>
+</div>
+
+<!-- Best Practice Mobile Controls -->
+<div id="mobile-controls" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;">
+    <!-- Left Control Zone - Virtual Joystick -->
+    <div id="left-control" style="position: absolute; left: 20px; bottom: 20px; width: 150px; height: 150px; pointer-events: auto;">
+        <canvas id="joystick-canvas" width="150" height="150" style="border-radius: 50%; background: rgba(0, 0, 0, 0.3);"></canvas>
+    </div>
+    
+    <!-- Right Control Zone - Fire Button -->
+    <div id="right-control" style="position: absolute; right: 20px; bottom: 20px; width: 100px; height: 100px; pointer-events: auto;">
+        <canvas id="fire-canvas" width="100" height="100" style="border-radius: 50%; background: rgba(0, 0, 0, 0.3);"></canvas>
+    </div>
+</div>
+
+<script>
+// Best Practice Mobile Game Controls Implementation
+// Based on proven open-source patterns
+
+// Device detection
+const deviceInfo = {
+    isIPhone: /iPhone/.test(navigator.userAgent),
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+    isTouch: 'ontouchstart' in window || navigator.maxTouchPoints > 0
+};
+
+console.log('Device detected:', deviceInfo);
+
+// Show mobile controls only on touch devices
+if (deviceInfo.isTouch) {
+    document.getElementById('mobile-controls').style.display = 'block';
+    console.log('📱 Mobile controls enabled');
+}
+
+// Game canvas setup
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// iPhone-specific optimizations
+if (deviceInfo.isIPhone) {
+    console.log('🍎 iPhone optimizations applied');
+    canvas.style.transform = 'translateZ(0)';
+    canvas.style.webkitTransform = 'translateZ(0)';
+    canvas.style.willChange = 'transform';
+}
+
+// Virtual Joystick Implementation (Best Practice Pattern)
+class VirtualJoystick {
+    constructor(canvas, options = {}) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.centerX = canvas.width / 2;
+        this.centerY = canvas.height / 2;
+        this.maxRadius = Math.min(canvas.width, canvas.height) / 2 - 10;
+        this.knobRadius = 15;
+        this.deadZone = 20;
+        
+        this.pressed = false;
+        this.knobX = this.centerX;
+        this.knobY = this.centerY;
+        
+        this.callbacks = options.callbacks || {};
+        
+        this.setupEventListeners();
+        this.draw();
+    }
+    
+    setupEventListeners() {
+        // Touch events
+        this.canvas.addEventListener('touchstart', (e) => this.handleStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.handleMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.handleEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e), { passive: false });
+        
+        // Mouse events for desktop testing
+        this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+        this.canvas.addEventListener('mousemove', (e) => this.handleMove(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
+        this.canvas.addEventListener('mouseleave', (e) => this.handleEnd(e));
+    }
+    
+    getEventPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+    
+    handleStart(e) {
+        e.preventDefault();
+        this.pressed = true;
+        const pos = this.getEventPos(e);
+        this.updateKnobPosition(pos.x, pos.y);
+        
+        if (this.callbacks.onStart) {
+            this.callbacks.onStart(this.getValues());
+        }
+    }
+    
+    handleMove(e) {
+        if (!this.pressed) return;
+        e.preventDefault();
+        
+        const pos = this.getEventPos(e);
+        this.updateKnobPosition(pos.x, pos.y);
+        
+        if (this.callbacks.onMove) {
+            this.callbacks.onMove(this.getValues());
+        }
+    }
+    
+    handleEnd(e) {
+        if (!this.pressed) return;
+        e.preventDefault();
+        
+        this.pressed = false;
+        this.knobX = this.centerX;
+        this.knobY = this.centerY;
+        this.draw();
+        
+        if (this.callbacks.onEnd) {
+            this.callbacks.onEnd(this.getValues());
+        }
+    }
+    
+    updateKnobPosition(x, y) {
+        const dx = x - this.centerX;
+        const dy = y - this.centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance <= this.maxRadius) {
+            this.knobX = x;
+            this.knobY = y;
+        } else {
+            const angle = Math.atan2(dy, dx);
+            this.knobX = this.centerX + Math.cos(angle) * this.maxRadius;
+            this.knobY = this.centerY + Math.sin(angle) * this.maxRadius;
+        }
+        
+        this.draw();
+    }
+    
+    getValues() {
+        const dx = this.knobX - this.centerX;
+        const dy = this.knobY - this.centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Apply dead zone
+        if (distance <= this.deadZone) {
+            return { x: 0, y: 0, distance: 0, angle: 0 };
+        }
+        
+        // Normalize values between -1 and 1
+        const normalizedX = dx / this.maxRadius;
+        const normalizedY = dy / this.maxRadius;
+        const angle = Math.atan2(dy, dx);
+        
+        return {
+            x: Math.max(-1, Math.min(1, normalizedX)),
+            y: Math.max(-1, Math.min(1, normalizedY)),
+            distance: Math.min(distance / this.maxRadius, 1),
+            angle: angle
+        };
+    }
+    
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw outer circle (background)
+        this.ctx.beginPath();
+        this.ctx.arc(this.centerX, this.centerY, this.maxRadius, 0, 2 * Math.PI);
+        this.ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#00ff00';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        
+        // Draw dead zone
+        this.ctx.beginPath();
+        this.ctx.arc(this.centerX, this.centerY, this.deadZone, 0, 2 * Math.PI);
+        this.ctx.fillStyle = 'rgba(0, 255, 0, 0.05)';
+        this.ctx.fill();
+        this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+        
+        // Draw knob
+        this.ctx.beginPath();
+        this.ctx.arc(this.knobX, this.knobY, this.knobRadius, 0, 2 * Math.PI);
+        this.ctx.fillStyle = this.pressed ? 'rgba(0, 255, 0, 0.6)' : 'rgba(0, 255, 0, 0.4)';
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#00ff00';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        
+        // Draw center dot
+        this.ctx.beginPath();
+        this.ctx.arc(this.knobX, this.knobY, 3, 0, 2 * Math.PI);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fill();
+    }
+}
+
+// Fire Button Implementation
+class FireButton {
+    constructor(canvas, options = {}) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.centerX = canvas.width / 2;
+        this.centerY = canvas.height / 2;
+        this.radius = Math.min(canvas.width, canvas.height) / 2 - 5;
+        
+        this.pressed = false;
+        this.callbacks = options.callbacks || {};
+        
+        this.setupEventListeners();
+        this.draw();
+    }
+    
+    setupEventListeners() {
+        // Touch events
+        this.canvas.addEventListener('touchstart', (e) => this.handleStart(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.handleEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleEnd(e), { passive: false });
+        
+        // Mouse events for desktop testing
+        this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleEnd(e));
+        this.canvas.addEventListener('mouseleave', (e) => this.handleEnd(e));
+    }
+    
+    handleStart(e) {
+        e.preventDefault();
+        this.pressed = true;
+        this.draw();
+        
+        // Haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+        
+        if (this.callbacks.onPress) {
+            this.callbacks.onPress();
+        }
+    }
+    
+    handleEnd(e) {
+        if (!this.pressed) return;
+        e.preventDefault();
+        
+        this.pressed = false;
+        this.draw();
+        
+        if (this.callbacks.onRelease) {
+            this.callbacks.onRelease();
+        }
+    }
+    
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw button background
+        this.ctx.beginPath();
+        this.ctx.arc(this.centerX, this.centerY, this.radius, 0, 2 * Math.PI);
+        
+        if (this.pressed) {
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
+        } else {
+            const gradient = this.ctx.createRadialGradient(
+                this.centerX, this.centerY, 0,
+                this.centerX, this.centerY, this.radius
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 0, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 255, 0, 0.1)');
+            this.ctx.fillStyle = gradient;
+        }
+        
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#ffff00';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+        
+        // Draw fire icon
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.font = 'bold 24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('🔥', this.centerX, this.centerY);
+    }
+}
+
+// Game state and logic (simplified from working version)
+const gameState = {
+    player: { x: 50, y: 300, width: 20, height: 15, health: 100, speed: 4 },
+    enemies: [],
+    bullets: [],
+    particles: [],
+    terrain: [],
+    score: 0,
+    lives: 3,
+    keys: {},
+    movement: { x: 0, y: 0 },
+    gameRunning: false,
+    lastTime: performance.now()
+};
+
+// Initialize mobile controls
+let virtualJoystick, fireButton;
+
+if (deviceInfo.isTouch) {
+    const joystickCanvas = document.getElementById('joystick-canvas');
+    const fireCanvas = document.getElementById('fire-canvas');
+    
+    virtualJoystick = new VirtualJoystick(joystickCanvas, {
+        callbacks: {
+            onMove: (values) => {
+                gameState.movement.x = values.x;
+                gameState.movement.y = values.y;
+            },
+            onEnd: () => {
+                gameState.movement.x = 0;
+                gameState.movement.y = 0;
+            }
+        }
+    });
+    
+    fireButton = new FireButton(fireCanvas, {
+        callbacks: {
+            onPress: () => {
+                fireBullet();
+            }
+        }
+    });
+}
+
+// Initialize terrain
+for (let x = 0; x < canvas.width + 50; x += 10) {
+    gameState.terrain.push({
+        x: x,
+        height: 15 + Math.sin(x * 0.05) * 10
+    });
+}
+
+// Initialize enemies
+for (let i = 0; i < 5; i++) {
+    gameState.enemies.push({
+        x: 200 + i * 80,
+        y: 30 + Math.sin(i * 2) * 40,
+        width: 15,
+        height: 15,
+        speed: 0.5 + Math.random() * 1.5,
+        health: 3,
+        type: Math.floor(Math.random() * 3)
+    });
+}
+
+// Keyboard input handling
+document.addEventListener('keydown', (e) => {
+    gameState.keys[e.key.toLowerCase()] = true;
+    if (e.key === ' ') {
+        e.preventDefault();
+        fireBullet();
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    gameState.keys[e.key.toLowerCase()] = false;
+});
+
+// Game functions
+function fireBullet() {
+    gameState.bullets.push({
+        x: gameState.player.x + gameState.player.width,
+        y: gameState.player.y + gameState.player.height / 2,
+        speed: 6,
+        damage: 1
+    });
+}
+
+function updatePlayer() {
+    // Keyboard movement
+    let moveX = 0, moveY = 0;
+    
+    if (gameState.keys['arrowleft'] || gameState.keys['a']) moveX -= 1;
+    if (gameState.keys['arrowright'] || gameState.keys['d']) moveX += 1;
+    if (gameState.keys['arrowup'] || gameState.keys['w']) moveY -= 1;
+    if (gameState.keys['arrowdown'] || gameState.keys['s']) moveY += 1;
+    
+    // Mobile joystick movement
+    if (deviceInfo.isTouch && virtualJoystick) {
+        moveX += gameState.movement.x;
+        moveY += gameState.movement.y;
+    }
+    
+    // Apply movement
+    gameState.player.x += moveX * gameState.player.speed;
+    gameState.player.y += moveY * gameState.player.speed;
+    
+    // Keep player in bounds
+    gameState.player.x = Math.max(0, Math.min(canvas.width - gameState.player.width, gameState.player.x));
+    gameState.player.y = Math.max(0, Math.min(canvas.height - gameState.player.height, gameState.player.y));
+}
+
+function updateEnemies() {
+    gameState.enemies.forEach((enemy, i) => {
+        enemy.x -= enemy.speed;
+        enemy.y += Math.sin(Date.now() * 0.001 + i) * 0.5;
+        
+        if (enemy.x < -enemy.width) {
+            enemy.x = canvas.width + 20;
+            enemy.y = 30 + Math.random() * 300;
+            enemy.health = 3;
+        }
+    });
+}
+
+function updateBullets() {
+    for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+        const bullet = gameState.bullets[i];
+        bullet.x += bullet.speed;
+        
+        if (bullet.x > canvas.width) {
+            gameState.bullets.splice(i, 1);
+            continue;
+        }
+        
+        // Collision with enemies
+        for (let j = 0; j < gameState.enemies.length; j++) {
+            const enemy = gameState.enemies[j];
+            if (bullet.x < enemy.x + enemy.width &&
+                bullet.x + 8 > enemy.x &&
+                bullet.y < enemy.y + enemy.height &&
+                bullet.y + 2 > enemy.y) {
+                
+                // Hit! Create particles
+                for (let p = 0; p < 5; p++) {
+                    gameState.particles.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height / 2,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 20,
+                        color: '#ffff00'
+                    });
+                }
+                
+                enemy.health--;
+                gameState.bullets.splice(i, 1);
+                gameState.score += 10;
+                
+                if (enemy.health <= 0) {
+                    enemy.x = canvas.width + Math.random() * 100;
+                    enemy.y = 30 + Math.random() * 300;
+                    enemy.health = 3;
+                    gameState.score += 50;
+                }
+                break;
+            }
+        }
+    }
+}
+
+function updateParticles() {
+    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+        const particle = gameState.particles[i];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.life--;
+        
+        if (particle.life <= 0) {
+            gameState.particles.splice(i, 1);
+        }
+    }
+}
+
+function updateTerrain() {
+    gameState.terrain.forEach(t => {
+        t.x -= 1;
+        if (t.x < -10) {
+            t.x = canvas.width;
+            t.height = 15 + Math.sin(Date.now() * 0.001) * 10;
+        }
+    });
+}
+
+// Render functions
+function render() {
+    // Background
+    ctx.fillStyle = '#001100';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Starfield
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 20; i++) {
+        const x = ((Date.now() * 0.05 + i * 23) % canvas.width);
+        const y = (i * 37) % canvas.height;
+        ctx.fillRect(x, y, 1, 1);
+    }
+    
+    // Terrain
+    ctx.fillStyle = '#003300';
+    gameState.terrain.forEach(t => {
+        ctx.fillRect(t.x, canvas.height - t.height, 10, t.height);
+    });
+    
+    // Player
+    ctx.fillStyle = '#00ff00';
+    ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+    
+    // Player details
+    ctx.fillStyle = '#88ff88';
+    ctx.fillRect(gameState.player.x + 2, gameState.player.y + 2, 16, 11);
+    ctx.fillStyle = '#0088ff';
+    ctx.fillRect(gameState.player.x - 3, gameState.player.y + 6, 6, 3);
+    
+    // Enemies
+    gameState.enemies.forEach((enemy, i) => {
+        switch (enemy.type) {
+            case 0: ctx.fillStyle = '#ff0000'; break;
+            case 1: ctx.fillStyle = '#ff8800'; break;
+            case 2: ctx.fillStyle = '#ff0088'; break;
+        }
+        
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        
+        ctx.fillStyle = '#ffaaaa';
+        ctx.fillRect(enemy.x + 2, enemy.y + 2, enemy.width - 4, enemy.height - 4);
+    });
+    
+    // Bullets
+    ctx.fillStyle = '#ffff00';
+    gameState.bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x, bullet.y, 8, 2);
+    });
+    
+    // Particles
+    gameState.particles.forEach(particle => {
+        const alpha = particle.life / 20;
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(particle.x, particle.y, 2, 2);
+        ctx.globalAlpha = 1;
+    });
+    
+    // UI
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '16px Courier New';
+    ctx.fillText(`Score: ${gameState.score}`, 10, 30);
+    ctx.fillText(`Health: ${gameState.player.health}`, 10, 50);
+    ctx.fillText(`Lives: ${gameState.lives}`, 10, 70);
+}
+
+// Main game loop
+function gameLoop(currentTime) {
+    if (!gameState.gameRunning) return;
+    
+    const deltaTime = currentTime - gameState.lastTime;
+    gameState.lastTime = currentTime;
+    
+    updatePlayer();
+    updateEnemies();
+    updateBullets();
+    updateParticles();
+    updateTerrain();
+    
+    render();
+    
+    // Update HUD
+    document.getElementById('score').textContent = gameState.score;
+    document.getElementById('lives').textContent = gameState.lives;
+    document.getElementById('health').textContent = gameState.player.health;
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// Initialize game
+function initGame() {
+    console.log('🎮 Initializing game with best practice mobile controls...');
+    
+    // Test initial render
+    ctx.fillStyle = '#002200';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#00ff00';
+    ctx.fillText('BOLAMIGA - LOADING...', 50, 50);
+    
+    // Start game
+    setTimeout(() => {
+        gameState.gameRunning = true;
+        gameLoop(performance.now());
+        console.log('🚀 Game started with mobile controls!');
+    }, 1000);
+}
+
+// Prevent scrolling on mobile
+document.addEventListener('touchmove', (e) => {
+    if (e.target.closest('#mobile-controls')) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// Start when page loads
+window.addEventListener('load', initGame);
+
+console.log('📱 Best practice mobile controls loaded');
+</script>
+
+<style>
+/* Mobile Control Styling */
+#mobile-controls {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+#left-control, #right-control {
+    touch-action: none;
+}
+
+/* Prevent text selection and context menus on mobile controls */
+#joystick-canvas, #fire-canvas {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Responsive adjustments */
+@media (max-height: 600px) {
+    #left-control, #right-control {
+        width: 120px;
+        height: 120px;
+        bottom: 10px;
+    }
+    
+    #joystick-canvas, #fire-canvas {
+        width: 120px;
+        height: 120px;
+    }
+    
+    #left-control {
+        left: 10px;
+    }
+    
+    #right-control {
+        right: 10px;
+        width: 80px;
+        height: 80px;
+    }
+    
+    #fire-canvas {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    #left-control {
+        width: 130px;
+        height: 130px;
+    }
+    
+    #joystick-canvas {
+        width: 130px;
+        height: 130px;
+    }
+    
+    #right-control {
+        width: 90px;
+        height: 90px;
+    }
+    
+    #fire-canvas {
+        width: 90px;
+        height: 90px;
+    }
+}
+</style>
+{% endblock %}
