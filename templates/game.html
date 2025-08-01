@@ -880,48 +880,39 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-    // iPhone Chrome: Simplified, focused rendering approach
+    // iPhone: Use EXACT working approach from minimal game
     if (currentPlatformConfig.platform.isIPhone) {
-        // Force context state reset - critical for iPhone Chrome
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalAlpha = 1.0;
-        ctx.globalCompositeOperation = 'source-over';
-        
-        // Clear canvas with solid background
-        ctx.fillStyle = '#000011'; // Dark blue-black
+        // Clear with same background as working minimal game
+        ctx.fillStyle = '#000022';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // iPhone: Draw simple game elements first for immediate visibility
+        // Draw player - EXACTLY like working minimal game
         if (player) {
-            // Draw player as bright rectangle - no sprites
-            ctx.fillStyle = '#00FF00'; // Bright green
+            ctx.fillStyle = '#00FF00'; // Same green that works
             ctx.fillRect(player.x, player.y, player.width, player.height);
-            
-            // Bright outline for extra visibility
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(player.x - 1, player.y - 1, player.width + 2, player.height + 2);
         }
         
-        // Draw simple bullets
+        // Draw enemies - EXACTLY like working minimal game
+        enemies.forEach(enemy => {
+            ctx.fillStyle = '#FF0000'; // Same red that works
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        });
+        
+        // Draw bullets - EXACTLY like working minimal game
         bullets.forEach(bullet => {
-            ctx.fillStyle = bullet.fromPlayer ? '#FFFF00' : '#FF4500';
+            ctx.fillStyle = '#FFFF00'; // Same yellow that works
             ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         });
         
-        // Draw simple enemies
-        enemies.forEach(enemy => {
-            ctx.fillStyle = '#FF0000'; // Bright red
-            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
-        });
+        // Add status text like working minimal game
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '20px Arial';
+        ctx.fillText('BOLAMIGA', 300, 50);
+        ctx.font = '16px Arial';
+        ctx.fillText(`Score: ${gameState.score}`, 300, 80);
+        ctx.fillText(`Lives: ${gameState.lives}`, 300, 100);
         
-        // Skip complex rendering for iPhone - just show game state
-        ctx.restore();
-        return; // Exit early for iPhone - keep it simple
+        return; // Exit early - NO complex systems for iPhone
     }
     
     // iPhone Debug: Log game state periodically
