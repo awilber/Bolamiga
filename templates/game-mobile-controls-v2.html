@@ -319,19 +319,29 @@ class FireButton {
     }
 }
 
-// Game state and logic (simplified from working version)
+// Game state and logic (enhanced with Blood Money-style terrain and obstacles)
 const gameState = {
     player: { x: 50, y: 300, width: 20, height: 15, health: 100, speed: 4 },
     enemies: [],
     bullets: [],
     particles: [],
-    terrain: [],
+    terrain: {
+        background: [],    // Far mountains (slowest parallax)
+        midground: [],     // Rolling hills (medium parallax) 
+        foreground: []     // Detailed surface (fastest parallax)
+    },
+    obstacles: {
+        destructible: [],  // Breakable terrain objects
+        hazards: [],       // Environmental dangers
+        platforms: []      // Moving platforms
+    },
     score: 0,
     lives: 3,
     keys: {},
     movement: { x: 0, y: 0 },
     gameRunning: false,
-    lastTime: performance.now()
+    lastTime: performance.now(),
+    scrollOffset: 0    // For parallax scrolling
 };
 
 // Initialize mobile controls
@@ -363,13 +373,90 @@ if (deviceInfo.isTouch) {
     });
 }
 
-// Initialize terrain
-for (let x = 0; x < canvas.width + 50; x += 10) {
-    gameState.terrain.push({
-        x: x,
-        height: 15 + Math.sin(x * 0.05) * 10
-    });
+// Initialize Blood Money-style multi-layered terrain
+function initializeTerrain() {
+    // Background mountains (slowest parallax - 0.1x speed)
+    for (let x = 0; x < canvas.width * 2; x += 20) {
+        const height = 80 + Math.sin(x * 0.01) * 30 + Math.sin(x * 0.003) * 20;
+        gameState.terrain.background.push({
+            x: x,
+            height: height,
+            type: 'mountain'
+        });
+    }
+    
+    // Midground hills (medium parallax - 0.3x speed)
+    for (let x = 0; x < canvas.width * 1.5; x += 15) {
+        const baseHeight = 40 + Math.sin(x * 0.02) * 15;
+        const variation = Math.sin(x * 0.008) * 10 + Math.sin(x * 0.015) * 8;
+        gameState.terrain.midground.push({
+            x: x,
+            height: baseHeight + variation,
+            type: 'hill'
+        });
+    }
+    
+    // Foreground detailed surface (full speed - 1.0x)
+    for (let x = 0; x < canvas.width + 100; x += 8) {
+        const baseHeight = 20 + Math.sin(x * 0.05) * 8;
+        const detail = Math.sin(x * 0.1) * 3 + Math.sin(x * 0.2) * 2;
+        const rocks = Math.random() > 0.7 ? Math.random() * 5 : 0;
+        gameState.terrain.foreground.push({
+            x: x,
+            height: baseHeight + detail + rocks,
+            type: 'surface',
+            hasRocks: rocks > 0
+        });
+    }
 }
+
+initializeTerrain();
+
+// Initialize Blood Money-style dynamic obstacles
+function initializeObstacles() {
+    // Destructible terrain objects
+    for (let i = 0; i < 8; i++) {
+        gameState.obstacles.destructible.push({
+            x: 150 + i * 120 + Math.random() * 40,
+            y: 200 + Math.random() * 200,
+            width: 25,
+            height: 30,
+            health: 3,
+            type: Math.random() > 0.5 ? 'rock' : 'crystal',
+            destroyed: false
+        });
+    }
+    
+    // Environmental hazards
+    for (let i = 0; i < 6; i++) {
+        gameState.obstacles.hazards.push({
+            x: 200 + i * 140,
+            y: 100 + Math.random() * 300,
+            width: 15,
+            height: 80,
+            type: 'laser',
+            active: true,
+            cycleTime: 2000 + Math.random() * 1000,
+            damage: 25
+        });
+    }
+    
+    // Moving platforms
+    for (let i = 0; i < 4; i++) {
+        gameState.obstacles.platforms.push({
+            x: 300 + i * 200,
+            y: 150 + Math.sin(i) * 100,
+            width: 60,
+            height: 12,
+            speed: 0.5 + Math.random() * 1,
+            direction: Math.random() > 0.5 ? 1 : -1,
+            range: 80,
+            originY: 150 + Math.sin(i) * 100
+        });
+    }
+}
+
+initializeObstacles();
 
 // Initialize enemies
 for (let i = 0; i < 5; i++) {
@@ -429,6 +516,73 @@ function updatePlayer() {
     // Keep player in bounds
     gameState.player.x = Math.max(0, Math.min(canvas.width - gameState.player.width, gameState.player.x));
     gameState.player.y = Math.max(0, Math.min(canvas.height - gameState.player.height, gameState.player.y));
+    
+    // Collision detection with obstacles
+    checkPlayerObstacleCollisions();
+}
+
+function checkPlayerObstacleCollisions() {
+    // Check collision with destructible objects
+    gameState.obstacles.destructible.forEach(obj => {
+        if (!obj.destroyed &&
+            gameState.player.x < obj.x + obj.width &&
+            gameState.player.x + gameState.player.width > obj.x &&
+            gameState.player.y < obj.y + obj.height &&
+            gameState.player.y + gameState.player.height > obj.y) {
+            
+            // Push player away from obstacle
+            const centerX = obj.x + obj.width / 2;
+            const centerY = obj.y + obj.height / 2;
+            const playerCenterX = gameState.player.x + gameState.player.width / 2;
+            const playerCenterY = gameState.player.y + gameState.player.height / 2;
+            
+            const dx = playerCenterX - centerX;
+            const dy = playerCenterY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                gameState.player.x += (dx / distance) * 2;
+                gameState.player.y += (dy / distance) * 2;
+            }
+        }
+    });
+    
+    // Check collision with active laser hazards
+    gameState.obstacles.hazards.forEach(hazard => {
+        if (hazard.active && hazard.type === 'laser' &&
+            gameState.player.x < hazard.x + 4 &&
+            gameState.player.x + gameState.player.width > hazard.x &&
+            gameState.player.y < hazard.y + hazard.height &&
+            gameState.player.y + gameState.player.height > hazard.y) {
+            
+            // Player hit by laser - take damage
+            gameState.player.health -= hazard.damage;
+            
+            // Create damage particles
+            for (let p = 0; p < 10; p++) {
+                gameState.particles.push({
+                    x: gameState.player.x + gameState.player.width / 2,
+                    y: gameState.player.y + gameState.player.height / 2,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 25,
+                    color: '#ff4444'
+                });
+            }
+            
+            // Push player away from laser
+            gameState.player.x -= 5;
+            
+            if (gameState.player.health <= 0) {
+                gameState.lives--;
+                gameState.player.health = 100;
+                if (gameState.lives <= 0) {
+                    console.log('Game Over!');
+                    // Could trigger game over screen here
+                }
+            }
+        }
+    });
 }
 
 function updateEnemies() {
@@ -487,6 +641,40 @@ function updateBullets() {
                 break;
             }
         }
+        
+        // Collision with destructible obstacles
+        for (let j = 0; j < gameState.obstacles.destructible.length; j++) {
+            const obj = gameState.obstacles.destructible[j];
+            if (!obj.destroyed &&
+                bullet.x < obj.x + obj.width &&
+                bullet.x + 8 > obj.x &&
+                bullet.y < obj.y + obj.height &&
+                bullet.y + 2 > obj.y) {
+                
+                // Hit destructible object
+                obj.health--;
+                gameState.bullets.splice(i, 1);
+                
+                // Create destruction particles
+                const particleColor = obj.type === 'rock' ? '#808080' : '#88ccff';
+                for (let p = 0; p < 8; p++) {
+                    gameState.particles.push({
+                        x: obj.x + obj.width / 2,
+                        y: obj.y + obj.height / 2,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
+                        life: 30,
+                        color: particleColor
+                    });
+                }
+                
+                if (obj.health <= 0) {
+                    obj.destroyed = true;
+                    gameState.score += obj.type === 'crystal' ? 100 : 50;
+                }
+                break;
+            }
+        }
     }
 }
 
@@ -504,11 +692,84 @@ function updateParticles() {
 }
 
 function updateTerrain() {
-    gameState.terrain.forEach(t => {
-        t.x -= 1;
-        if (t.x < -10) {
-            t.x = canvas.width;
-            t.height = 15 + Math.sin(Date.now() * 0.001) * 10;
+    gameState.scrollOffset += 1;
+    
+    // Update background mountains (slowest parallax)
+    gameState.terrain.background.forEach(t => {
+        t.x -= 0.1; // Very slow movement
+        if (t.x < -40) {
+            t.x = canvas.width + 20;
+            t.height = 80 + Math.sin(Date.now() * 0.0005 + t.x * 0.01) * 30 + Math.sin(t.x * 0.003) * 20;
+        }
+    });
+    
+    // Update midground hills (medium parallax)
+    gameState.terrain.midground.forEach(t => {
+        t.x -= 0.3; // Medium speed
+        if (t.x < -30) {
+            t.x = canvas.width + 15;
+            const baseHeight = 40 + Math.sin(t.x * 0.02) * 15;
+            const variation = Math.sin(Date.now() * 0.001 + t.x * 0.008) * 10;
+            t.height = baseHeight + variation;
+        }
+    });
+    
+    // Update foreground surface (full speed)
+    gameState.terrain.foreground.forEach(t => {
+        t.x -= 1; // Full speed
+        if (t.x < -16) {
+            t.x = canvas.width + 8;
+            const baseHeight = 20 + Math.sin(t.x * 0.05) * 8;
+            const detail = Math.sin(Date.now() * 0.002 + t.x * 0.1) * 3;
+            const rocks = Math.random() > 0.7 ? Math.random() * 5 : 0;
+            t.height = baseHeight + detail + rocks;
+            t.hasRocks = rocks > 0;
+        }
+    });
+}
+
+function updateObstacles() {
+    const currentTime = Date.now();
+    
+    // Update destructible objects
+    gameState.obstacles.destructible.forEach(obj => {
+        obj.x -= 1; // Move with foreground
+        if (obj.x < -obj.width) {
+            obj.x = canvas.width + Math.random() * 100;
+            obj.y = 200 + Math.random() * 200;
+            obj.health = 3;
+            obj.destroyed = false;
+        }
+    });
+    
+    // Update environmental hazards
+    gameState.obstacles.hazards.forEach(hazard => {
+        hazard.x -= 1; // Move with scene
+        if (hazard.x < -hazard.width) {
+            hazard.x = canvas.width + Math.random() * 100;
+            hazard.y = 100 + Math.random() * 300;
+        }
+        
+        // Laser cycling
+        if (hazard.type === 'laser') {
+            const cycle = (currentTime % hazard.cycleTime) / hazard.cycleTime;
+            hazard.active = cycle < 0.7; // Active 70% of the time
+        }
+    });
+    
+    // Update moving platforms
+    gameState.obstacles.platforms.forEach(platform => {
+        platform.x -= 0.5; // Slower movement than foreground
+        if (platform.x < -platform.width) {
+            platform.x = canvas.width + Math.random() * 50;
+            platform.originY = 150 + Math.random() * 200;
+            platform.y = platform.originY;
+        }
+        
+        // Vertical movement
+        platform.y += platform.speed * platform.direction;
+        if (Math.abs(platform.y - platform.originY) > platform.range) {
+            platform.direction *= -1;
         }
     });
 }
@@ -527,10 +788,135 @@ function render() {
         ctx.fillRect(x, y, 1, 1);
     }
     
-    // Terrain
-    ctx.fillStyle = '#003300';
-    gameState.terrain.forEach(t => {
-        ctx.fillRect(t.x, canvas.height - t.height, 10, t.height);
+    // Multi-layered Blood Money-style terrain
+    
+    // Background mountains (dark silhouettes)
+    ctx.fillStyle = '#001a00';
+    gameState.terrain.background.forEach(t => {
+        ctx.beginPath();
+        ctx.moveTo(t.x, canvas.height);
+        ctx.lineTo(t.x, canvas.height - t.height);
+        ctx.lineTo(t.x + 20, canvas.height - t.height);
+        ctx.lineTo(t.x + 20, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Mountain peaks detail
+        ctx.fillStyle = '#002200';
+        ctx.fillRect(t.x + 5, canvas.height - t.height - 5, 10, 5);
+        ctx.fillStyle = '#001a00';
+    });
+    
+    // Midground hills (medium green)
+    ctx.fillStyle = '#002a00';
+    gameState.terrain.midground.forEach(t => {
+        ctx.beginPath();
+        ctx.moveTo(t.x, canvas.height);
+        ctx.lineTo(t.x, canvas.height - t.height);
+        // Smooth hill curves
+        ctx.quadraticCurveTo(t.x + 7.5, canvas.height - t.height - 3, t.x + 15, canvas.height - t.height);
+        ctx.lineTo(t.x + 15, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Hill highlights
+        ctx.fillStyle = '#003600';
+        ctx.fillRect(t.x + 3, canvas.height - t.height + 2, 9, 3);
+        ctx.fillStyle = '#002a00';
+    });
+    
+    // Foreground detailed surface (brightest green with details)
+    gameState.terrain.foreground.forEach(t => {
+        ctx.fillStyle = '#003300';
+        ctx.fillRect(t.x, canvas.height - t.height, 8, t.height);
+        
+        // Surface details and rocks
+        if (t.hasRocks) {
+            ctx.fillStyle = '#404040';
+            ctx.fillRect(t.x + 2, canvas.height - t.height - 2, 4, 2);
+        }
+        
+        // Surface texture
+        ctx.fillStyle = '#004400';
+        ctx.fillRect(t.x + 1, canvas.height - t.height + 1, 6, 2);
+    });
+    
+    // Blood Money-style Dynamic Obstacles
+    
+    // Destructible terrain objects
+    gameState.obstacles.destructible.forEach(obj => {
+        if (obj.destroyed) return;
+        
+        if (obj.type === 'rock') {
+            // Rocky outcroppings
+            ctx.fillStyle = '#606060';
+            ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+            ctx.fillStyle = '#808080';
+            ctx.fillRect(obj.x + 2, obj.y + 2, obj.width - 4, obj.height - 4);
+            // Rock highlights
+            ctx.fillStyle = '#a0a0a0';
+            ctx.fillRect(obj.x + 4, obj.y + 4, 6, 4);
+        } else {
+            // Crystal formations
+            ctx.fillStyle = '#004488';
+            ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+            ctx.fillStyle = '#0066cc';
+            ctx.fillRect(obj.x + 3, obj.y + 3, obj.width - 6, obj.height - 6);
+            // Crystal glow
+            ctx.fillStyle = '#88ccff';
+            ctx.fillRect(obj.x + 8, obj.y + 8, 8, 8);
+        }
+        
+        // Damage indicators
+        if (obj.health < 3) {
+            ctx.fillStyle = '#ff4444';
+            for (let i = 0; i < (3 - obj.health) * 3; i++) {
+                const fx = obj.x + Math.random() * obj.width;
+                const fy = obj.y + Math.random() * obj.height;
+                ctx.fillRect(fx, fy, 2, 2);
+            }
+        }
+    });
+    
+    // Environmental hazards
+    gameState.obstacles.hazards.forEach(hazard => {
+        if (hazard.type === 'laser') {
+            if (hazard.active) {
+                // Laser beam
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(hazard.x, hazard.y, 4, hazard.height);
+                // Laser glow
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.fillRect(hazard.x - 2, hazard.y, 8, hazard.height);
+                // Laser core
+                ctx.fillStyle = '#ffaaaa';
+                ctx.fillRect(hazard.x + 1, hazard.y, 2, hazard.height);
+            }
+            
+            // Laser emitter
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(hazard.x - 3, hazard.y - 10, 10, 8);
+            ctx.fillStyle = hazard.active ? '#ff4444' : '#444444';
+            ctx.fillRect(hazard.x - 1, hazard.y - 8, 6, 4);
+        }
+    });
+    
+    // Moving platforms
+    gameState.obstacles.platforms.forEach(platform => {
+        // Platform base
+        ctx.fillStyle = '#666666';
+        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+        // Platform surface
+        ctx.fillStyle = '#888888';
+        ctx.fillRect(platform.x + 2, platform.y, platform.width - 4, 4);
+        // Platform lights
+        ctx.fillStyle = '#00ff00';
+        for (let i = 0; i < 3; i++) {
+            ctx.fillRect(platform.x + 8 + i * 16, platform.y + 2, 4, 2);
+        }
+        // Platform shadow/depth
+        ctx.fillStyle = '#444444';
+        ctx.fillRect(platform.x, platform.y + platform.height - 2, platform.width, 2);
     });
     
     // Player
@@ -592,6 +978,7 @@ function gameLoop(currentTime) {
     updateBullets();
     updateParticles();
     updateTerrain();
+    updateObstacles();
     
     render();
     
