@@ -929,24 +929,73 @@ function render() {
     ctx.fillStyle = '#0088ff';
     ctx.fillRect(gameState.player.x - 3, gameState.player.y + 6, 6, 3);
     
-    // Enemies
+    // Enhanced desktop-quality enemies with detailed sprites
     gameState.enemies.forEach((enemy, i) => {
+        let baseColor, brightColor, darkColor;
         switch (enemy.type) {
-            case 0: ctx.fillStyle = '#ff0000'; break;
-            case 1: ctx.fillStyle = '#ff8800'; break;
-            case 2: ctx.fillStyle = '#ff0088'; break;
+            case 0: 
+                baseColor = '#aa0000'; brightColor = '#ff0000'; darkColor = '#660000'; 
+                break;
+            case 1: 
+                baseColor = '#aa4400'; brightColor = '#ff8800'; darkColor = '#662200'; 
+                break;
+            case 2: 
+                baseColor = '#aa0044'; brightColor = '#ff0088'; darkColor = '#660022'; 
+                break;
         }
         
-        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        // Enemy ship main body
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(enemy.x + 1, enemy.y + 2, enemy.width - 2, enemy.height - 4);
         
-        ctx.fillStyle = '#ffaaaa';
-        ctx.fillRect(enemy.x + 2, enemy.y + 2, enemy.width - 4, enemy.height - 4);
+        // Enemy ship nose (pointing left)
+        ctx.fillStyle = brightColor;
+        ctx.fillRect(enemy.x, enemy.y + 4, 4, enemy.height - 8);
+        
+        // Enemy ship wings
+        ctx.fillStyle = darkColor;
+        ctx.fillRect(enemy.x + 8, enemy.y, 6, 3);
+        ctx.fillRect(enemy.x + 8, enemy.y + enemy.height - 3, 6, 3);
+        
+        // Enemy engine glow
+        const enemyGlow = 0.4 + Math.sin(Date.now() * 0.03 + enemy.x * 0.01) * 0.3;
+        ctx.fillStyle = `rgba(255, 100, 0, ${enemyGlow})`;
+        ctx.fillRect(enemy.x + enemy.width, enemy.y + 5, 4, enemy.height - 10);
+        
+        // Enemy ship details
+        ctx.fillStyle = brightColor;
+        ctx.fillRect(enemy.x + 3, enemy.y + 6, enemy.width - 6, 2);
+        
+        // Enemy weapon pods
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillRect(enemy.x + 2, enemy.y + 2, 2, 2);
+        ctx.fillRect(enemy.x + 2, enemy.y + enemy.height - 4, 2, 2);
+        
+        // Enemy cockpit/sensor
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(enemy.x + 1, enemy.y + 7, 2, 1);
     });
     
-    // Bullets
-    ctx.fillStyle = '#ffff00';
+    // Enhanced desktop-quality bullets with glow effects
     gameState.bullets.forEach(bullet => {
+        // Bullet core
+        ctx.fillStyle = '#ffff00';
         ctx.fillRect(bullet.x, bullet.y, 8, 2);
+        
+        // Bullet glow/trail
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+        ctx.fillRect(bullet.x - 2, bullet.y - 1, 12, 4);
+        
+        // Bullet highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bullet.x + 2, bullet.y, 4, 1);
+        
+        // Energy trail particles
+        for (let i = 1; i <= 3; i++) {
+            const trailAlpha = 0.3 / i;
+            ctx.fillStyle = `rgba(255, 255, 0, ${trailAlpha})`;
+            ctx.fillRect(bullet.x - i * 3, bullet.y, 2, 2);
+        }
     });
     
     // Particles
