@@ -25,29 +25,108 @@
     </div>
 </div>
 
-<!-- Best Practice Mobile Controls -->
+<!-- Responsive Mobile Controls with Portrait/Landscape Optimization -->
 <div id="mobile-controls" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000;">
     <!-- Left Control Zone - Virtual Joystick -->
-    <div id="left-control" style="position: absolute; left: 20px; bottom: 20px; width: 150px; height: 150px; pointer-events: auto;">
-        <canvas id="joystick-canvas" width="150" height="150" style="border-radius: 50%; background: rgba(0, 0, 0, 0.3);"></canvas>
+    <div id="left-control" class="mobile-control-joystick" style="position: absolute; left: 20px; bottom: 20px; width: 150px; height: 150px; pointer-events: auto;">
+        <canvas id="joystick-canvas" width="150" height="150" style="border-radius: 50%; background: rgba(0, 100, 0, 0.2); border: 2px solid #00ff00;"></canvas>
     </div>
     
     <!-- Right Control Zone - Fire Button -->
-    <div id="right-control" style="position: absolute; right: 20px; bottom: 20px; width: 100px; height: 100px; pointer-events: auto;">
-        <canvas id="fire-canvas" width="100" height="100" style="border-radius: 50%; background: rgba(0, 0, 0, 0.3);"></canvas>
+    <div id="right-control" class="mobile-control-fire" style="position: absolute; right: 20px; bottom: 20px; width: 100px; height: 100px; pointer-events: auto;">
+        <canvas id="fire-canvas" width="100" height="100" style="border-radius: 50%; background: rgba(100, 0, 0, 0.2); border: 2px solid #ff0000;"></canvas>
+    </div>
+    
+    <!-- Fullscreen Toggle for Mobile -->
+    <div id="fullscreen-control" style="position: absolute; top: 10px; right: 10px; pointer-events: auto; display: none;">
+        <button id="fullscreen-btn" style="padding: 8px 12px; background: rgba(0, 100, 0, 0.8); border: 1px solid #00ff00; color: #00ff00; border-radius: 4px; font-size: 16px;">⛶</button>
     </div>
 </div>
+
+<style>
+/* Responsive Mobile Controls */
+@media (orientation: portrait) and (max-width: 768px) {
+    .mobile-control-joystick {
+        left: 15px !important;
+        bottom: 15px !important;
+        width: 120px !important;
+        height: 120px !important;
+    }
+    
+    .mobile-control-fire {
+        right: 15px !important;
+        bottom: 25px !important;
+        width: 80px !important;
+        height: 80px !important;
+    }
+    
+    #fullscreen-control {
+        display: block !important;
+    }
+}
+
+@media (orientation: landscape) and (max-width: 1024px) {
+    .mobile-control-joystick {
+        left: 10px !important;
+        bottom: 10px !important;
+        width: 140px !important;
+        height: 140px !important;
+    }
+    
+    .mobile-control-fire {
+        right: 10px !important;
+        bottom: 10px !important;
+        width: 90px !important;
+        height: 90px !important;
+    }
+    
+    #fullscreen-control {
+        display: block !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .mobile-control-joystick {
+        width: 100px !important;
+        height: 100px !important;
+    }
+    
+    .mobile-control-fire {
+        width: 70px !important;
+        height: 70px !important;
+    }
+}
+</style>
 
 <script>
 // Best Practice Mobile Game Controls Implementation
 // Based on proven open-source patterns
 
-// Device detection
+// Enhanced device detection with responsive capabilities
 const deviceInfo = {
     isIPhone: /iPhone/.test(navigator.userAgent),
     isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
     isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
-    isTouch: 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    isTouch: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+    screenWidth: window.innerWidth,
+    screenHeight: window.innerHeight,
+    isPortrait: window.innerHeight > window.innerWidth,
+    pixelRatio: window.devicePixelRatio || 1,
+    
+    // Dynamic orientation and size tracking
+    updateScreenInfo() {
+        this.screenWidth = window.innerWidth;
+        this.screenHeight = window.innerHeight;
+        this.isPortrait = window.innerHeight > window.innerWidth;
+    },
+    
+    // Get responsive control size based on screen
+    getControlScale() {
+        const baseSize = Math.min(this.screenWidth, this.screenHeight);
+        if (baseSize < 400) return 0.7;
+        if (baseSize < 600) return 0.85;
+        return 1.0;
+    }
 };
 
 console.log('Device detected:', deviceInfo);
@@ -55,20 +134,160 @@ console.log('Device detected:', deviceInfo);
 // Show mobile controls only on touch devices
 if (deviceInfo.isTouch) {
     document.getElementById('mobile-controls').style.display = 'block';
+    document.getElementById('fullscreen-control').style.display = 'block';
     console.log('📱 Mobile controls enabled');
 }
 
-// Game canvas setup
+// Responsive control management
+function updateMobileControlsLayout() {
+    if (!deviceInfo.isTouch) return;
+    
+    const scale = deviceInfo.getControlScale();
+    const joystickControl = document.getElementById('left-control');
+    const fireControl = document.getElementById('right-control');
+    const joystickCanvas = document.getElementById('joystick-canvas');
+    const fireCanvas = document.getElementById('fire-canvas');
+    
+    // Update control sizes based on screen size
+    const joystickSize = Math.floor(150 * scale);
+    const fireSize = Math.floor(100 * scale);
+    
+    if (joystickControl) {
+        joystickControl.style.width = joystickSize + 'px';
+        joystickControl.style.height = joystickSize + 'px';
+        joystickCanvas.width = joystickSize;
+        joystickCanvas.height = joystickSize;
+    }
+    
+    if (fireControl) {
+        fireControl.style.width = fireSize + 'px';
+        fireControl.style.height = fireSize + 'px';
+        fireCanvas.width = fireSize;
+        fireCanvas.height = fireSize;
+    }
+    
+    // Reinitialize controls with new sizes
+    if (window.virtualJoystick) {
+        window.virtualJoystick.centerX = joystickSize / 2;
+        window.virtualJoystick.centerY = joystickSize / 2;
+        window.virtualJoystick.maxRadius = joystickSize / 2 - 10;
+        window.virtualJoystick.draw();
+    }
+    
+    if (window.fireButton) {
+        window.fireButton.centerX = fireSize / 2;
+        window.fireButton.centerY = fireSize / 2;
+        window.fireButton.radius = fireSize / 2 - 10;
+        window.fireButton.draw();
+    }
+}
+
+// Fullscreen functionality for immersive mobile experience
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        canvas.requestFullscreen().then(() => {
+            console.log('📱 Entered fullscreen mode');
+            deviceInfo.updateScreenInfo();
+            updateMobileControlsLayout();
+        }).catch(err => {
+            console.log('Fullscreen failed:', err);
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            console.log('📱 Exited fullscreen mode');
+            deviceInfo.updateScreenInfo();
+            updateMobileControlsLayout();
+        });
+    }
+}
+
+// Enhanced window event handlers
+window.addEventListener('resize', () => {
+    deviceInfo.updateScreenInfo();
+    updateMobileControlsLayout();
+    console.log('📱 Screen resized:', deviceInfo.screenWidth, 'x', deviceInfo.screenHeight);
+});
+
+window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+        deviceInfo.updateScreenInfo();
+        updateMobileControlsLayout();
+        console.log('📱 Orientation changed to:', deviceInfo.isPortrait ? 'Portrait' : 'Landscape');
+    }, 100);
+});
+
+// Fullscreen button event
+document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+
+// Responsive game canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// iPhone-specific optimizations
-if (deviceInfo.isIPhone) {
-    console.log('🍎 iPhone optimizations applied');
+// Enhanced responsive canvas sizing
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    let targetWidth, targetHeight;
+    
+    if (deviceInfo.isMobile) {
+        if (deviceInfo.isPortrait) {
+            // Portrait mode: Optimize for portrait gameplay
+            targetWidth = Math.min(deviceInfo.screenWidth * 0.95, 600);
+            targetHeight = Math.min(deviceInfo.screenHeight * 0.55, 400);
+        } else {
+            // Landscape mode: Use more screen space
+            targetWidth = Math.min(deviceInfo.screenWidth * 0.9, 800);
+            targetHeight = Math.min(deviceInfo.screenHeight * 0.8, 600);
+        }
+    } else {
+        // Desktop mode: Default sizing
+        targetWidth = 800;
+        targetHeight = 600;
+    }
+    
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    canvas.style.width = targetWidth + 'px';
+    canvas.style.height = targetHeight + 'px';
+    
+    console.log(`📱 Canvas resized to: ${targetWidth}x${targetHeight}`);
+}
+
+// iPhone and mobile-specific optimizations
+if (deviceInfo.isTouch) {
+    console.log('📱 Touch device optimizations applied');
     canvas.style.transform = 'translateZ(0)';
     canvas.style.webkitTransform = 'translateZ(0)';
     canvas.style.willChange = 'transform';
+    canvas.style.touchAction = 'none'; // Prevent scrolling on touch
+    
+    // Initial responsive sizing
+    resizeCanvas();
+    
+    // Prevent context menu on long press
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Prevent default touch behaviors
+    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 }
+
+// Enhanced resize handler with canvas updates
+const originalResizeHandler = window.addEventListener;
+window.addEventListener('resize', () => {
+    deviceInfo.updateScreenInfo();
+    resizeCanvas();
+    updateMobileControlsLayout();
+    console.log('📱 Screen resized:', deviceInfo.screenWidth, 'x', deviceInfo.screenHeight);
+});
+
+window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+        deviceInfo.updateScreenInfo();
+        resizeCanvas();
+        updateMobileControlsLayout();
+        console.log('📱 Orientation changed to:', deviceInfo.isPortrait ? 'Portrait' : 'Landscape');
+    }, 100);
+});
 
 // Virtual Joystick Implementation (Best Practice Pattern)
 class VirtualJoystick {
